@@ -1,4 +1,5 @@
-import type { GalleryViewMode } from '../../shared/types'
+import { mediaAspectRatio as motionAwareAspectRatio } from '../../shared/mediaDimensions'
+import type { GalleryViewMode, MediaItem } from '../../shared/types'
 
 const STORAGE_GALLERY_MODE = 'collectionXiewer.galleryMode'
 const STORAGE_GRID_SIZE = 'collectionXiewer.gridSize'
@@ -85,9 +86,8 @@ export function computeColumnWidth(
   return (containerWidth - gap * (columnCount - 1)) / columnCount
 }
 
-export function mediaAspectRatio(item: { width: number | null; height: number | null }): number {
-  if (item.width && item.height && item.height > 0) return item.width / item.height
-  return 1
+export function mediaAspectRatio(item: Pick<MediaItem, 'width' | 'height' | 'kind'>): number {
+  return motionAwareAspectRatio(item.width, item.height, item.kind)
 }
 
 /** Rounded sizes for thumb IPC/cache; must be >= display pixels × DPR. */

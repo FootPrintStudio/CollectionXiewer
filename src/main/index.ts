@@ -2,9 +2,12 @@ import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { getDb, closeDb } from './db/database'
 import { registerIpcHandlers, setMainWindow } from './ipc/handlers'
+import { installMediaProtocolHandler, registerMediaScheme } from './protocol/mediaProtocol'
 import { stopAllWatchers } from './services/watcher'
 import { initWatchers } from './services/roots'
 import { rebuildAllClosure } from './services/tags'
+
+registerMediaScheme()
 
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
@@ -41,6 +44,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  installMediaProtocolHandler()
   getDb()
   rebuildAllClosure()
   registerIpcHandlers()

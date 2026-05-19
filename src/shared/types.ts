@@ -118,6 +118,7 @@ export interface Collection {
   name: string
   description_md: string | null
   created_at: string
+  sort_order: number
 }
 
 export interface CollectionWithStats extends Collection {

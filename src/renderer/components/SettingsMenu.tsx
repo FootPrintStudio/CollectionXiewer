@@ -14,7 +14,13 @@ export function SettingsMenu() {
   const bumpIdentifiersRevision = useAppStore((s) => s.bumpIdentifiersRevision)
   const [open, setOpen] = useState(false)
   const [identifierEdit, setIdentifierEdit] = useState<Identifier | null | 'new' | null>(null)
+  const [videoToolsOk, setVideoToolsOk] = useState<boolean | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    void window.collectionXiewer.video.toolsAvailable().then(setVideoToolsOk)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -43,6 +49,22 @@ export function SettingsMenu() {
     bumpIdentifiersRevision()
     setIdentifierEdit(null)
   }
+
+  const openIdentifierEditor = (target: Identifier | 'new') => {
+    setOpen(false)
+    setIdentifierEdit(target)
+  }
+
+  useEffect(() => {
+    const root = document.getElementById('root')
+    if (!root) return
+    if (identifierEdit != null) {
+      root.setAttribute('inert', '')
+    } else {
+      root.removeAttribute('inert')
+    }
+    return () => root.removeAttribute('inert')
+  }, [identifierEdit])
 
   return (
     <>
@@ -83,12 +105,19 @@ export function SettingsMenu() {
             <p className="settings-menu__toggle-hint">
               Coloured icons on matching gallery thumbnails (top-left).
             </p>
-            <SettingsIdentifiersPanel onOpenEditor={setIdentifierEdit} />
+            {videoToolsOk === false ? (
+              <p className="settings-menu__warning" role="status">
+                ffmpeg/ffprobe not found on PATH — video thumbnails and metadata need ffmpeg. Set
+                FFMPEG_PATH / FFPROBE_PATH to override.
+              </p>
+            ) : null}
+            <SettingsIdentifiersPanel onOpenEditor={openIdentifierEditor} />
           </div>
         ) : null}
       </div>
       {identifierEdit != null ? (
         <IdentifierEditorModal
+          key={identifierEdit === 'new' ? 'new' : identifierEdit.id}
           identifier={identifierEdit === 'new' ? null : identifierEdit}
           onClose={() => setIdentifierEdit(null)}
           onSaved={onIdentifierSaved}

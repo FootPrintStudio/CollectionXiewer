@@ -1,37 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Pause, Play, X } from 'lucide-react'
 import type { MediaItem } from '../../shared/types'
 import { useAppStore } from '../store/appStore'
 import { ZoomablePreviewImage } from './ZoomablePreviewImage'
-import { VideoPreviewPlayer } from './VideoPreviewPlayer'
+import { isEditableTarget } from '../lib/keyboardTargets'
+import { slideshowEligibleMedia } from '../lib/slideshowMedia'
 
-function SlideshowSlide({ item, onVideoEnded }: { item: MediaItem; onVideoEnded?: () => void }) {
+function SlideshowSlide({ item }: { item: MediaItem }) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setPreviewSrc(null)
-    if (item.kind === 'video') return
     void window.collectionXiewer.preview.get(item.id, 2400).then((b64) => {
       if (!cancelled && b64) setPreviewSrc(`data:image/jpeg;base64,${b64}`)
     })
     return () => {
       cancelled = true
     }
-  }, [item.id, item.kind])
-
-  if (item.kind === 'video') {
-    return (
-      <VideoPreviewPlayer
-        mediaId={item.id}
-        src={`file://${item.absolute_path}`}
-        className="slideshow-overlay__video"
-        compact
-        onEnded={onVideoEnded}
-      />
-    )
-  }
+  }, [item.id])
 
   if (previewSrc) {
     return <ZoomablePreviewImage src={previewSrc} alt={item.relative_path} />
@@ -51,8 +39,9 @@ export function SlideshowOverlay() {
   const setSlideshowPlaying = useAppStore((s) => s.setSlideshowPlaying)
   const setSlideshowIntervalSec = useAppStore((s) => s.setSlideshowIntervalSec)
 
-  const item = media[slideshowIndex] ?? null
-  const count = media.length
+  const slideshowItems = useMemo(() => slideshowEligibleMedia(media), [media])
+  const item = slideshowItems[slideshowIndex] ?? null
+  const count = slideshowItems.length
 
   const goRelative = useCallback(
     (delta: number) => {
@@ -65,14 +54,14 @@ export function SlideshowOverlay() {
 
   useEffect(() => {
     if (!slideshowOpen || !slideshowPlaying || count === 0) return
-    if (item?.kind === 'video') return
     const id = window.setInterval(() => goRelative(1), slideshowIntervalSec * 1000)
     return () => window.clearInterval(id)
-  }, [slideshowOpen, slideshowPlaying, slideshowIntervalSec, count, item?.kind, goRelative])
+  }, [slideshowOpen, slideshowPlaying, slideshowIntervalSec, count, goRelative])
 
   useEffect(() => {
     if (!slideshowOpen) return
     const onKey = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
       if (e.key === 'Escape') {
         e.preventDefault()
         closeSlideshow()
@@ -128,11 +117,7 @@ export function SlideshowOverlay() {
         <X size={24} />
       </button>
       <div className="slideshow-overlay__stage">
-        <SlideshowSlide
-          key={item.id}
-          item={item}
-          onVideoEnded={slideshowPlaying ? () => goRelative(1) : undefined}
-        />
+        <SlideshowSlide key={item.id} item={item} />
       </div>
       <div className="slideshow-overlay__bar">
         <span>

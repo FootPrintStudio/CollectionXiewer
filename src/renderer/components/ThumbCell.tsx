@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { mediaAspectRatioCss } from '../../shared/mediaDimensions'
 import type { IdentifierBadge, MediaItem, Tag } from '../../shared/types'
 import { useMediaTagDrop } from '../dnd/useMediaTagDrop'
 import { useMediaDrag } from '../dnd/useMediaDrag'
@@ -14,7 +15,7 @@ interface Props {
   height?: number
   /** Longest on-screen edge in CSS px; drives requested thumb resolution. */
   pixelSize?: number
-  /** Square cell that stretches to the grid column width. */
+  /** Fixed square grid cell; image is letterboxed with object-fit: contain. */
   fillGridCell?: boolean
   selected?: boolean
   primary?: boolean
@@ -53,12 +54,15 @@ export function ThumbCell({
   }, [item.id, pixelSize])
 
   const style: CSSProperties = fillGridCell
-    ? { width: '100%', height: 'auto', aspectRatio: '1' }
+    ? {
+        width: '100%',
+        height: 'auto',
+        aspectRatio: '1'
+      }
     : {
         width: width ?? '100%',
         height: height ?? width ?? 160,
-        aspectRatio:
-          width && height ? undefined : item.width && item.height ? `${item.width}/${item.height}` : '1'
+        aspectRatio: width && height ? undefined : mediaAspectRatioCss(item.width, item.height, item.kind)
       }
 
   const setRefs = (el: HTMLDivElement | null) => {

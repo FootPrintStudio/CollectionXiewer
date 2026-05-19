@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import type { MediaItem } from '../../../shared/types'
 import { ThumbCell } from '../../components/ThumbCell'
 import { useContainerWidth } from '../../hooks/useContainerWidth'
 import { useGalleryMarquee } from '../../hooks/useGalleryMarquee'
@@ -56,11 +57,7 @@ function GalleryArea({
   const { marquee, onPointerDown } = useGalleryMarquee(containerRef, onMarqueeSelect)
 
   return (
-    <div
-      ref={setRef}
-      className="gallery-area"
-      onPointerDown={onPointerDown}
-    >
+    <div ref={setRef} className="gallery-area" onPointerDown={onPointerDown}>
       {children}
       {marquee ? (
         <div
@@ -75,6 +72,90 @@ function GalleryArea({
       ) : null}
     </div>
   )
+}
+
+type ThumbHandlers = {
+  onThumbClick: (id: number, e: React.MouseEvent) => void
+  onThumbDoubleClick: (id: number) => void
+  thumbOverlayProps: (mediaId: number) => Record<string, unknown>
+  isMediaSelected: (id: number) => boolean
+  selectedMediaId: number | null
+}
+
+function VirtualMasonryColumn({
+  column,
+  columnWidth,
+  scrollRef,
+  handlers
+}: {
+  column: MediaItem[]
+  columnWidth: number
+  scrollRef: React.RefObject<HTMLDivElement | null>
+  handlers: ThumbHandlers
+}) {
+  const {
+    onThumbClick,
+    onThumbDoubleClick,
+    thumbOverlayProps,
+    isMediaSelected,
+    selectedMediaId
+  } = handlers
+
+  const virtualizer = useVirtualizer({
+    count: column.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => {
+      const item = column[index]
+      if (!item) return columnWidth + GRID_GAP_PX
+      return columnWidth / mediaAspectRatio(item) + GRID_GAP_PX
+    },
+    overscan: 4
+  })
+
+  return (
+    <div
+      className="masonry-gallery__column"
+      style={{ width: columnWidth, position: 'relative', height: virtualizer.getTotalSize() }}
+    >
+      {virtualizer.getVirtualItems().map((vi) => {
+        const item = column[vi.index]
+        if (!item) return null
+        const thumbHeight = columnWidth / mediaAspectRatio(item)
+        const displayEdge = Math.max(columnWidth, thumbHeight)
+        return (
+          <div
+            key={vi.key}
+            style={{
+              position: 'absolute',
+              top: vi.start,
+              left: 0,
+              width: columnWidth
+            }}
+          >
+            <ThumbCell
+              item={item}
+              width={columnWidth}
+              height={thumbHeight}
+              pixelSize={thumbPixelSizeForDisplay(displayEdge)}
+              selected={isMediaSelected(item.id)}
+              primary={selectedMediaId === item.id}
+              onClick={(e) => onThumbClick(item.id, e)}
+              onDoubleClick={() => onThumbDoubleClick(item.id)}
+              {...thumbOverlayProps(item.id)}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function chunkMediaRows(items: MediaItem[], columnCount: number): MediaItem[][] {
+  const rows: MediaItem[][] = []
+  for (let i = 0; i < items.length; i += columnCount) {
+    rows.push(items.slice(i, i + columnCount))
+  }
+  return rows
 }
 
 export function GalleryView() {
@@ -128,6 +209,14 @@ export function GalleryView() {
     openPreview(id)
   }
 
+  const thumbHandlers: ThumbHandlers = {
+    onThumbClick,
+    onThumbDoubleClick,
+    thumbOverlayProps,
+    isMediaSelected,
+    selectedMediaId
+  }
+
   const containerWidth = galleryAreaWidth || scrollRef.current?.clientWidth || 800
 
   const columnCount = useMemo(
@@ -145,6 +234,20 @@ export function GalleryView() {
     [columnWidth]
   )
 
+  const gridRows = useMemo(
+    () => (galleryMode === 'grid' ? chunkMediaRows(media, columnCount) : []),
+    [media, galleryMode, columnCount]
+  )
+
+  const gridRowEstimate = columnWidth + GRID_GAP_PX
+
+  const gridVirtualizer = useVirtualizer({
+    count: galleryMode === 'grid' ? gridRows.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => gridRowEstimate,
+    overscan: 3
+  })
+
   const masonryColumns = useMemo(
     () =>
       galleryMode === 'masonry'
@@ -152,6 +255,7 @@ export function GalleryView() {
         : [],
     [media, galleryMode, columnCount, columnWidth]
   )
+
   const targetRowHeight = gridSize * H_MASONRY_ROW_HEIGHT_FACTOR
 
   const hRows = useMemo(
@@ -173,6 +277,10 @@ export function GalleryView() {
     if (galleryMode === 'horizontal') rowVirtualizer.measure()
   }, [galleryMode, hRows, containerWidth, targetRowHeight, rowVirtualizer])
 
+  useEffect(() => {
+    if (galleryMode === 'grid') gridVirtualizer.measure()
+  }, [galleryMode, gridRows, columnWidth, gridSize, gridVirtualizer])
+
   if (media.length === 0) {
     return <div className="empty-hint">No media indexed. Add a watch folder to begin.</div>
   }
@@ -181,25 +289,42 @@ export function GalleryView() {
     return (
       <GalleryArea areaRef={galleryAreaRef}>
         <div
-          className="grid-gallery"
-          style={{
-            gap: GRID_GAP_PX,
-            gridTemplateColumns: `repeat(${columnCount}, minmax(${gridSize}px, 1fr))`
-          }}
+          className="grid-gallery grid-gallery--virtual"
+          style={{ height: gridVirtualizer.getTotalSize(), position: 'relative' }}
         >
-          {media.map((item) => (
-            <ThumbCell
-              key={item.id}
-              item={item}
-              fillGridCell
-              pixelSize={gridThumbPixelSize}
-              selected={isMediaSelected(item.id)}
-              primary={selectedMediaId === item.id}
-              onClick={(e) => onThumbClick(item.id, e)}
-              onDoubleClick={() => onThumbDoubleClick(item.id)}
-              {...thumbOverlayProps(item.id)}
-            />
-          ))}
+          {gridVirtualizer.getVirtualItems().map((vi) => {
+            const row = gridRows[vi.index]
+            if (!row) return null
+            return (
+              <div
+                key={vi.key}
+                className="grid-gallery__row"
+                style={{
+                  position: 'absolute',
+                  top: vi.start,
+                  left: 0,
+                  width: containerWidth,
+                  display: 'grid',
+                  gap: GRID_GAP_PX,
+                  gridTemplateColumns: `repeat(${columnCount}, minmax(${gridSize}px, 1fr))`
+                }}
+              >
+                {row.map((item) => (
+                  <ThumbCell
+                    key={item.id}
+                    item={item}
+                    fillGridCell
+                    pixelSize={gridThumbPixelSize}
+                    selected={isMediaSelected(item.id)}
+                    primary={selectedMediaId === item.id}
+                    onClick={(e) => onThumbClick(item.id, e)}
+                    onDoubleClick={() => onThumbDoubleClick(item.id)}
+                    {...thumbOverlayProps(item.id)}
+                  />
+                ))}
+              </div>
+            )
+          })}
         </div>
       </GalleryArea>
     )
@@ -210,26 +335,13 @@ export function GalleryView() {
       <GalleryArea areaRef={galleryAreaRef}>
         <div className="masonry-gallery">
           {masonryColumns.map((column, colIndex) => (
-            <div key={colIndex} className="masonry-gallery__column" style={{ width: columnWidth }}>
-              {column.map((item) => {
-                const thumbHeight = columnWidth / mediaAspectRatio(item)
-                const displayEdge = Math.max(columnWidth, thumbHeight)
-                return (
-                  <ThumbCell
-                    key={item.id}
-                    item={item}
-                    width={columnWidth}
-                    height={thumbHeight}
-                    pixelSize={thumbPixelSizeForDisplay(displayEdge)}
-                    selected={isMediaSelected(item.id)}
-                    primary={selectedMediaId === item.id}
-                    onClick={(e) => onThumbClick(item.id, e)}
-                    onDoubleClick={() => onThumbDoubleClick(item.id)}
-                    {...thumbOverlayProps(item.id)}
-                  />
-                )
-              })}
-            </div>
+            <VirtualMasonryColumn
+              key={colIndex}
+              column={column}
+              columnWidth={columnWidth}
+              scrollRef={scrollRef}
+              handlers={thumbHandlers}
+            />
           ))}
         </div>
       </GalleryArea>

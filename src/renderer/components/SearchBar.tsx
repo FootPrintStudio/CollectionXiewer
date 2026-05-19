@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { SavedSearch } from '../../shared/types'
 import type { SearchNode } from '../../shared/searchAst'
-import { isEmptySearchAst, countSearchClauses } from '../../shared/searchAst'
+import { defaultSearchAst, isEmptySearchAst, countSearchClauses } from '../../shared/searchAst'
 import {
   formatSearchQuery,
   parseSearchQuery,
   type SearchResolveContext
 } from '../../shared/searchParser'
 import { useAppStore } from '../store/appStore'
-import { SearchAutocomplete } from './SearchAutocomplete'
+import { SearchAutocomplete, type SearchAutocompleteHandle } from './SearchAutocomplete'
+import { handleSearchAutocompleteKeyDown } from '../lib/searchAutocompleteKeys'
 import { SavedSearchesMenu } from './SavedSearchesMenu'
+import { SaveSearchModal } from '../ui/SaveSearchModal'
 
 const SYNTAX_HELP = `tag:slug — tag on media (descendants included)
 -tag:slug — without tag (inclusive tag: clauses in the same AND take priority)
@@ -40,8 +43,11 @@ export function SearchBar() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [savedRefreshKey, setSavedRefreshKey] = useState(0)
+  const [activeSavedSearchId, setActiveSavedSearchId] = useState<number | null>(null)
+  const [saveModal, setSaveModal] = useState<{ queryText: string; ast: SearchNode } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<SearchAutocompleteHandle>(null)
 
   const resolveCtx: SearchResolveContext = useMemo(
     () => ({
@@ -79,9 +85,63 @@ export function SearchBar() {
     [resolveCtx, setSearchQuery, refreshMedia]
   )
 
+  const commitLocalQuery = useCallback((): { queryText: string; ast: SearchNode } | null => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    const trimmed = localText.trim()
+    if (!trimmed) {
+      setParseError(null)
+      setSearchQuery('', defaultSearchAst)
+      return null
+    }
+    const { ast, errors } = parseSearchQuery(trimmed, resolveCtx)
+    if (errors.length > 0) {
+      setParseError(errors[0]!.message)
+      return null
+    }
+    setParseError(null)
+    setSearchQuery(trimmed, ast)
+    return { queryText: trimmed, ast }
+  }, [localText, resolveCtx, setSearchQuery])
+
+  const buildSavedPayload = useCallback(
+    (queryText: string, ast: SearchNode) =>
+      JSON.stringify({
+        v: 2,
+        ast,
+        queryText
+      } satisfies { v: 2; ast: SearchNode; queryText: string }),
+    []
+  )
+
+  const localQueryState = useMemo(() => {
+    const trimmed = localText.trim()
+    if (!trimmed) {
+      return { clauseCount: 0, canSave: false, ast: defaultSearchAst, error: null as string | null }
+    }
+    const { ast, errors } = parseSearchQuery(trimmed, resolveCtx)
+    if (errors.length > 0) {
+      return {
+        clauseCount: 0,
+        canSave: false,
+        ast: defaultSearchAst,
+        error: errors[0]!.message
+      }
+    }
+    return {
+      clauseCount: countSearchClauses(ast),
+      canSave: !isEmptySearchAst(ast),
+      ast,
+      error: null as string | null
+    }
+  }, [localText, resolveCtx])
+
   const loadSaved = useCallback(
-    (text: string, ast: SearchNode) => {
+    (row: SavedSearch, text: string, ast: SearchNode) => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
+      setActiveSavedSearchId(row.id)
       setLocalText(text)
       setParseError(null)
       setSearchQuery(text, ast)
@@ -94,6 +154,19 @@ export function SearchBar() {
       })
     },
     [setSearchQuery, refreshMedia]
+  )
+
+  const updateSavedRow = useCallback(
+    async (id: number) => {
+      const committed = commitLocalQuery()
+      if (!committed || isEmptySearchAst(committed.ast)) return
+      await window.collectionXiewer.search.savedUpdate(id, {
+        query_json: buildSavedPayload(committed.queryText, committed.ast)
+      })
+      setActiveSavedSearchId(id)
+      setSavedRefreshKey((k) => k + 1)
+    },
+    [commitLocalQuery, buildSavedPayload]
   )
 
   useEffect(() => {
@@ -113,21 +186,18 @@ export function SearchBar() {
     }
   }, [localText, searchQueryText, applyQuery])
 
-  const clauseCount = isEmptySearchAst(searchAst) ? 0 : countSearchClauses(searchAst)
-  const chipText = isEmptySearchAst(searchAst) ? '' : formatSearchQuery(searchAst, resolveCtx)
+  const displayError = localQueryState.error ?? parseError
+  const clauseCount = localQueryState.clauseCount
+  const chipText = localQueryState.canSave
+    ? formatSearchQuery(localQueryState.ast, resolveCtx)
+    : isEmptySearchAst(searchAst)
+      ? ''
+      : formatSearchQuery(searchAst, resolveCtx)
 
-  const saveSearch = async () => {
-    if (parseError || isEmptySearchAst(searchAst)) return
-    const name = prompt('Saved search name?')
-    if (name) {
-      const payload = JSON.stringify({
-        v: 2,
-        ast: searchAst,
-        queryText: searchQueryText
-      } satisfies { v: 2; ast: SearchNode; queryText: string })
-      await window.collectionXiewer.search.savedCreate(name, payload)
-      setSavedRefreshKey((k) => k + 1)
-    }
+  const openSaveAsNew = () => {
+    const committed = commitLocalQuery()
+    if (!committed || isEmptySearchAst(committed.ast)) return
+    setSaveModal(committed)
   }
 
   return (
@@ -137,10 +207,11 @@ export function SearchBar() {
         <input
           ref={inputRef}
           type="text"
-          className={`search-bar__input${parseError ? ' search-bar__input--error' : ''}`}
+          className={`search-bar__input${displayError ? ' search-bar__input--error' : ''}`}
           value={localText}
           onChange={(e) => {
             setLocalText(e.target.value)
+            setActiveSavedSearchId(null)
             setCursor(e.target.selectionStart ?? e.target.value.length)
           }}
           onSelect={(e) => {
@@ -148,6 +219,7 @@ export function SearchBar() {
             setCursor(t.selectionStart ?? t.value.length)
           }}
           onKeyDown={(e) => {
+            if (handleSearchAutocompleteKeyDown(e, autocompleteRef)) return
             if (e.key === 'Enter') {
               if (debounceRef.current) clearTimeout(debounceRef.current)
               applyQuery(localText, true)
@@ -159,11 +231,12 @@ export function SearchBar() {
           }}
           placeholder='tag:hero@subject — type tag: coll: folder: for suggestions'
           spellCheck={false}
-          aria-invalid={parseError != null}
-          aria-describedby={parseError ? 'search-parse-error' : undefined}
+          aria-invalid={displayError != null}
+          aria-describedby={displayError ? 'search-parse-error' : undefined}
           autoComplete="off"
         />
         <SearchAutocomplete
+          ref={autocompleteRef}
           text={localText}
           cursor={cursor}
           tags={tags}
@@ -186,6 +259,7 @@ export function SearchBar() {
           resolveCtx={resolveCtx}
           refreshKey={savedRefreshKey}
           onLoad={loadSaved}
+          onUpdateRow={(id) => void updateSavedRow(id)}
         />
         <button
           type="button"
@@ -201,6 +275,7 @@ export function SearchBar() {
           onClick={() => {
             if (debounceRef.current) clearTimeout(debounceRef.current)
             setLocalText('')
+            setActiveSavedSearchId(null)
             setParseError(null)
             setSearchQuery('', { type: 'and', children: [] })
             void refreshMedia()
@@ -208,8 +283,20 @@ export function SearchBar() {
         >
           Clear
         </button>
-        <button type="button" onClick={() => void saveSearch()} disabled={!!parseError || clauseCount === 0}>
-          Save
+        <button
+          type="button"
+          onClick={() => void updateSavedRow(activeSavedSearchId!)}
+          disabled={activeSavedSearchId == null || !localQueryState.canSave}
+          title="Overwrite the loaded saved search with the current query"
+        >
+          Update
+        </button>
+        <button
+          type="button"
+          onClick={openSaveAsNew}
+          disabled={!localQueryState.canSave}
+        >
+          Save as…
         </button>
       </div>
       {helpOpen ? (
@@ -217,19 +304,30 @@ export function SearchBar() {
           {SYNTAX_HELP}
         </pre>
       ) : null}
-      {parseError ? (
+      {displayError ? (
         <span id="search-parse-error" className="search-bar__error" role="alert">
-          {parseError}
+          {displayError}
         </span>
       ) : (
         <span className="search-bar__status">
           {clauseCount > 0 ? `${clauseCount} clause(s)` : 'All media'}
         </span>
       )}
-      {chipText && !parseError ? (
+      {chipText && !displayError ? (
         <div className="search-bar__chips" aria-label="Active filters">
           <span className="search-bar__chip">{chipText}</span>
         </div>
+      ) : null}
+      {saveModal ? (
+        <SaveSearchModal
+          queryText={saveModal.queryText}
+          ast={saveModal.ast}
+          onClose={() => setSaveModal(null)}
+          onSaved={(row) => {
+            setActiveSavedSearchId(row.id)
+            setSavedRefreshKey((k) => k + 1)
+          }}
+        />
       ) : null}
     </div>
   )

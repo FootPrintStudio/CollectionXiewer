@@ -1,6 +1,13 @@
+import { pixelRect } from '../../shared/cropRect'
 import { getSharp } from '../lib/lazyNative'
+import { exportHeicCrop } from '../lib/heicImage'
+import { exportExoticRasterCrop } from '../lib/rasterFormats'
+import { isExoticRasterPath, isHeicPath } from '../../shared/rasterExtensions'
+import { imageDimensionsFromMetadata, sharpReadOptions } from '../lib/sharpMotion'
 import { getDb } from '../db/database'
-import type { CropRect, MediaCrop } from '../../shared/types'
+import type { CropRect, MediaCrop, MediaKind } from '../../shared/types'
+
+export { pixelRect } from '../../shared/cropRect'
 
 export function getCrop(mediaId: number): MediaCrop | null {
   return (
@@ -26,26 +33,25 @@ export function clearCrop(mediaId: number): void {
 export async function exportCropped(
   absolutePath: string,
   rect: CropRect,
-  outPath: string
+  outPath: string,
+  kind?: MediaKind
 ): Promise<void> {
-  const sharp = getSharp()
-  const meta = await sharp(absolutePath).metadata()
-  const W = meta.width ?? 1
-  const H = meta.height ?? 1
-  const left = Math.round(rect.x * W)
-  const top = Math.round(rect.y * H)
-  const width = Math.max(1, Math.round(rect.w * W))
-  const height = Math.max(1, Math.round(rect.h * H))
-  await sharp(absolutePath)
-    .extract({ left, top, width, height })
-    .toFile(outPath)
-}
-
-export function pixelRect(rect: CropRect, width: number, height: number) {
-  return {
-    left: Math.round(rect.x * width),
-    top: Math.round(rect.y * height),
-    width: Math.max(1, Math.round(rect.w * width)),
-    height: Math.max(1, Math.round(rect.h * height))
+  if (isHeicPath(absolutePath)) {
+    await exportHeicCrop(absolutePath, rect, outPath)
+    return
   }
+
+  if (isExoticRasterPath(absolutePath)) {
+    await exportExoticRasterCrop(absolutePath, rect, outPath)
+    return
+  }
+
+  const sharp = getSharp()
+  const readOpts = sharpReadOptions(absolutePath, kind)
+  const meta = await sharp(absolutePath, readOpts).metadata()
+  const dims = imageDimensionsFromMetadata(meta)
+  const W = dims.width ?? 1
+  const H = dims.height ?? 1
+  const px = pixelRect(rect, W, H)
+  await sharp(absolutePath, readOpts).extract(px).toFile(outPath)
 }

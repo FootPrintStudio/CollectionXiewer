@@ -4,8 +4,10 @@ import type { CropRect, MediaItem } from '../../../shared/types'
 import { useAppStore } from '../../store/appStore'
 import { useMediaTagDrop } from '../../dnd/useMediaTagDrop'
 import { ZoomablePreviewImage } from '../../components/ZoomablePreviewImage'
+import { mediaUrlFromPath } from '../../lib/fileUrl'
 import { MarqueeCropEditor } from '../../components/MarqueeCropEditor'
 import { VideoPreviewPlayer } from '../../components/VideoPreviewPlayer'
+import { isEditableTarget } from '../../lib/keyboardTargets'
 
 export function MediaPreviewer() {
   const mediaList = useAppStore((s) => s.media)
@@ -19,6 +21,7 @@ export function MediaPreviewer() {
   const [media, setMedia] = useState<MediaItem | null>(null)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [cropRect, setCropRect] = useState<CropRect | null>(null)
+  const [hasCrop, setHasCrop] = useState(false)
 
   const currentIndex = useMemo(
     () => mediaList.findIndex((m) => m.id === selectedMediaId),
@@ -39,10 +42,19 @@ export function MediaPreviewer() {
   const load = useCallback(async (id: number) => {
     const m = await window.collectionXiewer.media.get(id)
     setMedia(m)
-    if (!m) return
+    if (!m) {
+      setHasCrop(false)
+      return
+    }
+    const savedCrop = await window.collectionXiewer.crop.get(id)
+    setHasCrop(!!savedCrop)
+    if (m.kind === 'motion') {
+      setPreviewSrc(mediaUrlFromPath(m.absolute_path))
+      return
+    }
     const b64 = await window.collectionXiewer.preview.get(id, 2000)
     if (b64) setPreviewSrc(`data:image/jpeg;base64,${b64}`)
-    else if (m.kind === 'video') setPreviewSrc(m.absolute_path)
+    else if (m.kind === 'video') setPreviewSrc(mediaUrlFromPath(m.absolute_path))
     else setPreviewSrc(null)
   }, [])
 
@@ -56,6 +68,7 @@ export function MediaPreviewer() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return
       if (e.key === 'Escape') {
         if (cropMode) {
           setCropMode(false)
@@ -66,6 +79,10 @@ export function MediaPreviewer() {
         return
       }
       if (cropMode) return
+      if (media?.kind === 'video') {
+        const videoKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F', 'm', 'M', 'k', 'K']
+        if (videoKeys.includes(e.key)) return
+      }
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
         goToRelative(-1)
@@ -76,13 +93,14 @@ export function MediaPreviewer() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [closePreview, cropMode, goToRelative, setCropMode])
+  }, [closePreview, cropMode, goToRelative, setCropMode, media?.kind])
 
   const saveCrop = async () => {
     if (!media || !cropRect) return
     await window.collectionXiewer.crop.set(media.id, cropRect)
     setCropMode(false)
     setCropRect(null)
+    setHasCrop(true)
     void load(media.id)
   }
 
@@ -90,7 +108,7 @@ export function MediaPreviewer() {
     return <div className="empty-hint">No media selected</div>
   }
 
-  const isImage = media.kind === 'image' || media.kind === 'motion'
+  const isCroppable = media.kind === 'image' || media.kind === 'motion'
   const positionLabel =
     currentIndex >= 0 ? `${currentIndex + 1} / ${mediaList.length}` : null
 
@@ -124,7 +142,7 @@ export function MediaPreviewer() {
             <span className="previewer-position"> · {positionLabel}</span>
           ) : null}
         </span>
-        {isImage && (
+        {isCroppable && (
           <button
             type="button"
             className={cropMode ? 'primary' : ''}
@@ -162,9 +180,11 @@ export function MediaPreviewer() {
             </button>
           </>
         )}
-        <button type="button" onClick={() => void window.collectionXiewer.crop.export(media.id)}>
-          Export crop
-        </button>
+        {hasCrop ? (
+          <button type="button" onClick={() => void window.collectionXiewer.crop.export(media.id)}>
+            Export crop
+          </button>
+        ) : null}
         <button type="button" onClick={() => window.collectionXiewer.fs.reveal(media.id)}>
           Reveal
         </button>
@@ -212,7 +232,7 @@ export function MediaPreviewer() {
             </button>
           </>
         ) : null}
-        {cropMode && previewSrc && isImage ? (
+        {cropMode && previewSrc && isCroppable ? (
           <div className="crop-container">
             <MarqueeCropEditor
               src={previewSrc}
@@ -223,10 +243,10 @@ export function MediaPreviewer() {
         ) : media.kind === 'video' ? (
           <VideoPreviewPlayer
             mediaId={media.id}
-            src={`file://${media.absolute_path}`}
+            src={mediaUrlFromPath(media.absolute_path)}
             onPosterSaved={() => void useAppStore.getState().refreshMedia()}
           />
-        ) : previewSrc && isImage ? (
+        ) : previewSrc && isCroppable ? (
           <ZoomablePreviewImage src={previewSrc} alt={media.relative_path} />
         ) : previewSrc ? (
           <img src={previewSrc} alt="" />

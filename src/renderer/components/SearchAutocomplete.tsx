@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import type { Collection, CollectionWithStats, Tag, WatchRoot } from '../../shared/types'
 import { formatTagLabel } from '../../shared/tagDisplay'
 import {
@@ -12,6 +12,12 @@ export interface SuggestionItem {
   insert: string
 }
 
+export interface SearchAutocompleteHandle {
+  readonly isOpen: boolean
+  navigate: (direction: 'up' | 'down') => void
+  pickHighlighted: () => boolean
+}
+
 interface SearchAutocompleteProps {
   text: string
   cursor: number
@@ -21,66 +27,92 @@ interface SearchAutocompleteProps {
   onApply: (nextText: string, nextCursor: number) => void
 }
 
-export function SearchAutocomplete({
-  text,
-  cursor,
-  tags,
-  collections,
-  roots,
-  onApply
-}: SearchAutocompleteProps) {
-  const [active, setActive] = useState<ActiveCompletion | null>(null)
-  const [items, setItems] = useState<SuggestionItem[]>([])
-  const [highlight, setHighlight] = useState(0)
+export const SearchAutocomplete = forwardRef<SearchAutocompleteHandle, SearchAutocompleteProps>(
+  function SearchAutocomplete({ text, cursor, tags, collections, roots, onApply }, ref) {
+    const [active, setActive] = useState<ActiveCompletion | null>(null)
+    const [items, setItems] = useState<SuggestionItem[]>([])
+    const [highlight, setHighlight] = useState(0)
 
-  useEffect(() => {
-    const a = detectActiveCompletion(text, cursor)
-    setActive(a)
-    setHighlight(0)
-    if (!a) {
+    useEffect(() => {
+      const a = detectActiveCompletion(text, cursor)
+      setActive(a)
+      setHighlight(0)
+      if (!a) {
+        setItems([])
+        return
+      }
+
+      let cancelled = false
+      void (async () => {
+        const suggestions = await fetchSuggestions(a, tags, collections, roots)
+        if (!cancelled) setItems(suggestions.slice(0, 25))
+      })()
+
+      return () => {
+        cancelled = true
+      }
+    }, [text, cursor, tags, collections, roots])
+
+    const pick = (item: SuggestionItem) => {
+      if (!active) return
+      const { text: nextText, cursor: nextCursor } = applyCompletion(text, active, item.insert)
+      onApply(nextText, nextCursor)
       setItems([])
-      return
     }
 
-    let cancelled = false
-    void (async () => {
-      const suggestions = await fetchSuggestions(a, tags, collections, roots)
-      if (!cancelled) setItems(suggestions.slice(0, 25))
-    })()
+    const isOpen = active != null && items.length > 0
 
-    return () => {
-      cancelled = true
-    }
-  }, [text, cursor, tags, collections, roots])
+    useImperativeHandle(
+      ref,
+      () => ({
+        get isOpen() {
+          return active != null && items.length > 0
+        },
+        navigate(direction: 'up' | 'down') {
+          if (!isOpen) return
+          setHighlight((h) => {
+            if (direction === 'up') return h <= 0 ? items.length - 1 : h - 1
+            return h >= items.length - 1 ? 0 : h + 1
+          })
+        },
+        pickHighlighted() {
+          if (!isOpen) return false
+          const item = items[highlight]
+          if (!item) return false
+          pick(item)
+          return true
+        }
+      }),
+      [active, items, highlight, isOpen, text]
+    )
 
-  if (!active || items.length === 0) return null
+    if (!isOpen) return null
 
-  const pick = (item: SuggestionItem) => {
-    const { text: nextText, cursor: nextCursor } = applyCompletion(text, active, item.insert)
-    onApply(nextText, nextCursor)
-    setItems([])
+    return (
+      <ul className="search-autocomplete" role="listbox">
+        {items.map((item, i) => (
+          <li key={`${item.insert}-${i}`} role="option" aria-selected={i === highlight}>
+            <button
+              type="button"
+              className={
+                i === highlight
+                  ? 'search-autocomplete__item search-autocomplete__item--active'
+                  : 'search-autocomplete__item'
+              }
+              onMouseDown={(e) => {
+                e.preventDefault()
+                pick(item)
+              }}
+              onMouseEnter={() => setHighlight(i)}
+            >
+              {item.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
   }
-
-  return (
-    <ul className="search-autocomplete" role="listbox">
-      {items.map((item, i) => (
-        <li key={`${item.insert}-${i}`} role="option" aria-selected={i === highlight}>
-          <button
-            type="button"
-            className={i === highlight ? 'search-autocomplete__item search-autocomplete__item--active' : 'search-autocomplete__item'}
-            onMouseDown={(e) => {
-              e.preventDefault()
-              pick(item)
-            }}
-            onMouseEnter={() => setHighlight(i)}
-          >
-            {item.label}
-          </button>
-        </li>
-      ))}
-    </ul>
-  )
-}
+)
 
 async function fetchSuggestions(
   active: ActiveCompletion,

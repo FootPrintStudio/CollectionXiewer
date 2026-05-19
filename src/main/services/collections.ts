@@ -9,7 +9,7 @@ export function listCollections(): CollectionWithStats[] {
        FROM collections c
        LEFT JOIN collection_members cm ON cm.collection_id = c.id
        GROUP BY c.id
-       ORDER BY c.name COLLATE NOCASE`
+       ORDER BY c.sort_order, c.name COLLATE NOCASE`
     )
     .all() as CollectionWithStats[]
 }
@@ -20,9 +20,17 @@ export function getCollection(id: number): Collection | undefined {
 
 export function createCollection(name: string, description_md?: string): Collection {
   const now = new Date().toISOString()
-  const r = getDb()
-    .prepare(`INSERT INTO collections (name, description_md, created_at) VALUES (?, ?, ?)`)
-    .run(name, description_md ?? null, now)
+  const db = getDb()
+  const nextOrder = (
+    db.prepare(`SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM collections`).get() as {
+      n: number
+    }
+  ).n
+  const r = db
+    .prepare(
+      `INSERT INTO collections (name, description_md, created_at, sort_order) VALUES (?, ?, ?, ?)`
+    )
+    .run(name, description_md ?? null, now, nextOrder)
   const col = getCollection(Number(r.lastInsertRowid))!
   syncCollectionFts(col.id)
   return col
@@ -79,7 +87,7 @@ export function listCollectionsForMedia(mediaId: number): Collection[] {
       `SELECT c.* FROM collections c
        JOIN collection_members cm ON cm.collection_id = c.id
        WHERE cm.media_id = ?
-       ORDER BY c.name COLLATE NOCASE`
+       ORDER BY c.sort_order, c.name COLLATE NOCASE`
     )
     .all(mediaId) as Collection[]
 }
@@ -133,6 +141,31 @@ export function searchCollectionsByPrincipalTag(tagId: number): Collection[] {
        WHERE cpt.tag_id = ?`
     )
     .all(tagId) as Collection[]
+}
+
+export function reorderCollections(orderedIds: number[]): void {
+  const db = getDb()
+  const stmt = db.prepare(`UPDATE collections SET sort_order = ? WHERE id = ?`)
+  const tx = db.transaction(() => {
+    orderedIds.forEach((id, index) => stmt.run(index, id))
+  })
+  tx()
+}
+
+export function moveCollection(id: number, direction: 'up' | 'down'): void {
+  const cols = listCollections()
+  const idx = cols.findIndex((c) => c.id === id)
+  if (idx < 0) return
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= cols.length) return
+  const a = cols[idx]!
+  const b = cols[swapIdx]!
+  const db = getDb()
+  const move = db.transaction(() => {
+    db.prepare(`UPDATE collections SET sort_order = ? WHERE id = ?`).run(b.sort_order, a.id)
+    db.prepare(`UPDATE collections SET sort_order = ? WHERE id = ?`).run(a.sort_order, b.id)
+  })
+  move()
 }
 
 export function searchCollectionsFts(query: string): Collection[] {

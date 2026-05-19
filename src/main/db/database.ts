@@ -188,6 +188,24 @@ function migrateTagIcons(database: Database.Database): void {
   }
 }
 
+function migrateCollectionSortOrder(database: Database.Database): void {
+  if (!tableExists(database, 'collections') || columnExists(database, 'collections', 'sort_order')) {
+    return
+  }
+
+  database.exec(`ALTER TABLE collections ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`)
+
+  const rows = database
+    .prepare(`SELECT id FROM collections ORDER BY name COLLATE NOCASE`)
+    .all() as { id: number }[]
+
+  const update = database.prepare(`UPDATE collections SET sort_order = ? WHERE id = ?`)
+  const tx = database.transaction(() => {
+    rows.forEach((row, index) => update.run(index, row.id))
+  })
+  tx()
+}
+
 function migrate(database: Database.Database): void {
   migrateLegacyTags(database)
   migrateConsistentNaming(database)
@@ -197,6 +215,7 @@ function migrate(database: Database.Database): void {
   migrateTagIcons(database)
   migrateTagSortOrder(database)
   migrateMediaTagSuggestions(database)
+  migrateCollectionSortOrder(database)
 
   database.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS tags_fts USING fts5(

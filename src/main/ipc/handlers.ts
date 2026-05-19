@@ -17,6 +17,11 @@ import * as fsOps from '../services/fsOps'
 import { getDb } from '../db/database'
 import { exportCropped } from '../services/crop'
 import { indexFile } from '../services/indexer'
+import {
+  backfillExoticRasterDimension,
+  backfillExoticRasterDimensions
+} from '../services/exoticRasterDimensions'
+import { ensureVideoTools } from '../lib/videoThumb'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -36,31 +41,39 @@ export function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.handle('media:list', (_e, query: MediaListQuery) => mediaQuery.listMedia(query))
-  ipcMain.handle('media:get', (_e, id: number) => mediaQuery.getMedia(id))
+  ipcMain.handle('media:list', async (_e, query: MediaListQuery) =>
+    backfillExoticRasterDimensions(mediaQuery.listMedia(query))
+  )
+  ipcMain.handle('media:get', async (_e, id: number) =>
+    backfillExoticRasterDimension(mediaQuery.getMedia(id))
+  )
   ipcMain.handle(
     'media:search',
-    (
+    async (
       _e,
       astJson: string,
       limit?: number,
       offset?: number,
       sortOrder?: MediaListQuery['sortOrder']
-    ) => mediaQuery.runSearchAst(parseSearchAst(astJson), limit, offset, { sortOrder })
+    ) =>
+      backfillExoticRasterDimensions(
+        mediaQuery.runSearchAst(parseSearchAst(astJson), limit, offset, { sortOrder })
+      )
   )
 
   ipcMain.handle('thumb:get', async (_e, mediaId: number, size: number) => {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) return null
-    const buf = await thumbs.generateThumbnail(media.absolute_path, size, mediaId)
-    return buf.toString('base64')
+    const buf = await thumbs.generateThumbnail(media.absolute_path, size, mediaId, media.kind)
+    return buf?.toString('base64') ?? null
   })
 
   ipcMain.handle('preview:get', async (_e, mediaId: number, maxDim: number) => {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) return null
-    const buf = await thumbs.generatePreviewBuffer(media.absolute_path, maxDim, mediaId)
-    return buf.toString('base64')
+    if (media.kind === 'motion') return null
+    const buf = await thumbs.generatePreviewBuffer(media.absolute_path, maxDim, mediaId, media.kind)
+    return buf?.toString('base64') ?? null
   })
 
   ipcMain.handle('video:setPoster', (_e, mediaId: number, data: Buffer, timeMs: number) => {
@@ -76,6 +89,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('video:getPosterTimeMs', (_e, mediaId: number) =>
     videoPoster.getPosterTimeMs(mediaId)
   )
+  ipcMain.handle('video:toolsAvailable', () => ensureVideoTools())
 
   ipcMain.handle('tags:list', () => tags.listTags())
   ipcMain.handle('tags:get', (_e, id: number) => tags.getTag(id))
@@ -208,6 +222,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('collections:by-principal-tag', (_e, tagId: number) =>
     collections.searchCollectionsByPrincipalTag(tagId)
   )
+  ipcMain.handle('collections:reorder', (_e, orderedIds: number[]) => {
+    collections.reorderCollections(orderedIds)
+  })
+  ipcMain.handle('collections:move', (_e, id: number, direction: 'up' | 'down') => {
+    collections.moveCollection(id, direction)
+  })
 
   ipcMain.handle('crop:get', (_e, mediaId: number) => crop.getCrop(mediaId))
   ipcMain.handle('crop:set', (_e, mediaId: number, rect: CropRect) => crop.setCrop(mediaId, rect))
@@ -222,7 +242,7 @@ export function registerIpcHandlers(): void {
       filters: [{ name: 'Images', extensions: ['jpg', 'png', 'webp'] }]
     })
     if (result.canceled || !result.filePath) return null
-    await exportCropped(media.absolute_path, c, result.filePath)
+    await exportCropped(media.absolute_path, c, result.filePath, media.kind)
     const root = getDb().prepare(`SELECT * FROM watch_roots WHERE id = ?`).get(media.root_id) as {
       id: number
       path: string
@@ -250,6 +270,22 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('search:saved-delete', (_e, id: number) => {
     getDb().prepare(`DELETE FROM saved_searches WHERE id = ?`).run(id)
   })
+  ipcMain.handle(
+    'search:saved-update',
+    (_e, id: number, patch: { name?: string; query_json?: string }) => {
+      const row = getDb().prepare(`SELECT * FROM saved_searches WHERE id = ?`).get(id) as
+        | { id: number; name: string; query_json: string }
+        | undefined
+      if (!row) throw new Error('Saved search not found')
+      const name = patch.name?.trim() || row.name
+      if (!name) throw new Error('Name is required')
+      const queryJson = patch.query_json ?? row.query_json
+      getDb()
+        .prepare(`UPDATE saved_searches SET name = ?, query_json = ? WHERE id = ?`)
+        .run(name, queryJson, id)
+      return getDb().prepare(`SELECT * FROM saved_searches WHERE id = ?`).get(id)
+    }
+  )
 
   ipcMain.handle('fs:rename', (_e, mediaId: number, newName: string) => fsOps.renameMedia(mediaId, newName))
   ipcMain.handle('fs:delete', (_e, mediaId: number) => fsOps.deleteMediaFile(mediaId))

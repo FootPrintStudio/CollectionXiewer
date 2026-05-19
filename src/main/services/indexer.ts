@@ -2,6 +2,12 @@ import { stat } from 'node:fs/promises'
 import { extname, relative } from 'node:path'
 import mime from 'mime-types'
 import { getSharp } from '../lib/lazyNative'
+import { readGifLogicalSize } from '../lib/motionFrame'
+import { readHeicDimensions } from '../lib/heicImage'
+import { readExoticRasterDimensions } from '../lib/rasterFormats'
+import { isExoticRasterPath, isHeicPath } from '../../shared/rasterExtensions'
+import { imageDimensionsFromMetadata } from '../lib/sharpMotion'
+import { probeVideoStream } from '../lib/videoThumb'
 import { getDb } from '../db/database'
 import type { MediaKind, MediaItem } from '../../shared/types'
 import { enrichMedia } from './mediaPaths'
@@ -14,9 +20,10 @@ const IMAGE_EXTS = new Set([
   '.bmp',
   '.gif',
   '.tga',
+  '.heic',
+  '.heif',
   '.apng'
 ])
-const MOTION_EXTS = new Set(['.gif', '.webp', '.apng', '.png'])
 const VIDEO_EXTS = new Set(['.mp4', '.webm', '.mkv', '.mov', '.avi', '.m4v'])
 
 const SKIP_DIRS = new Set([
@@ -37,7 +44,7 @@ export function classifyFile(filePath: string): { mime: string | null; kind: Med
   if (VIDEO_EXTS.has(ext)) return { mime: mimeType ?? `video/${ext.slice(1)}`, kind: 'video' }
   if (ext === '.gif' || ext === '.apng') return { mime: mimeType, kind: 'motion' }
   if (ext === '.webp' || ext === '.png') {
-    return { mime: mimeType, kind: MOTION_EXTS.has(ext) ? 'motion' : 'image' }
+    return { mime: mimeType, kind: 'image' }
   }
   if (IMAGE_EXTS.has(ext) || (mimeType?.startsWith('image/') ?? false)) {
     return { mime: mimeType, kind: 'image' }
@@ -50,7 +57,7 @@ export async function indexFile(
   rootPath: string,
   absoluteFilePath: string
 ): Promise<MediaItem | null> {
-  const { kind, mime: mimeType } = classifyFile(absoluteFilePath)
+  let { kind, mime: mimeType } = classifyFile(absoluteFilePath)
   if (kind === 'unknown') return null
 
   const rel = relative(rootPath, absoluteFilePath)
@@ -59,14 +66,46 @@ export async function indexFile(
   const st = await stat(absoluteFilePath)
   let width: number | null = null
   let height: number | null = null
+  let durationMs: number | null = null
 
-  if (kind === 'image' || kind === 'motion') {
+  if (kind === 'video') {
+    const probe = await probeVideoStream(absoluteFilePath)
+    if (probe) {
+      width = probe.width
+      height = probe.height
+      durationMs = probe.durationMs
+    }
+  } else if (kind === 'image' || kind === 'motion') {
     try {
-      const meta = await getSharp()(absoluteFilePath, { animated: kind === 'motion' }).metadata()
-      width = meta.width ?? null
-      height = meta.height ?? null
+      const ext = extname(absoluteFilePath).toLowerCase()
+      if (ext === '.gif') {
+        const gifSize = readGifLogicalSize(absoluteFilePath)
+        if (gifSize) {
+          width = gifSize.width
+          height = gifSize.height
+        }
+      } else if (isHeicPath(absoluteFilePath)) {
+        const dims = await readHeicDimensions(absoluteFilePath)
+        if (dims) {
+          width = dims.width
+          height = dims.height
+        }
+      } else if (isExoticRasterPath(absoluteFilePath)) {
+        const dims = await readExoticRasterDimensions(absoluteFilePath)
+        if (dims) {
+          width = dims.width
+          height = dims.height
+        }
+      } else {
+        const useAnimated = kind === 'motion' || ext === '.webp' || ext === '.png'
+        const meta = await getSharp()(absoluteFilePath, useAnimated ? { animated: true } : {}).metadata()
+        const dims = imageDimensionsFromMetadata(meta)
+        width = dims.width
+        height = dims.height
+        if (kind === 'image' && dims.pages > 1) kind = 'motion'
+      }
     } catch {
-      /* TGA or exotic — keep null dimensions */
+      /* unsupported — keep null dimensions */
     }
   }
 
@@ -74,16 +113,17 @@ export async function indexFile(
   const now = new Date().toISOString()
   db.prepare(
     `INSERT INTO media_items (root_id, relative_path, mime, kind, width, height, duration_ms, mtime, indexed_at, missing)
-     VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 0)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(root_id, relative_path) DO UPDATE SET
        mime = excluded.mime,
        kind = excluded.kind,
        width = excluded.width,
        height = excluded.height,
+       duration_ms = excluded.duration_ms,
        mtime = excluded.mtime,
        indexed_at = excluded.indexed_at,
        missing = 0`
-  ).run(rootId, rel, mimeType, kind, width, height, st.mtimeMs, now)
+  ).run(rootId, rel, mimeType, kind, width, height, durationMs, st.mtimeMs, now)
 
   const row = db
     .prepare(

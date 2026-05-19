@@ -38,7 +38,8 @@ const api = {
     getPosterPath: (mediaId: number) =>
       ipcRenderer.invoke('video:getPosterPath', mediaId) as Promise<string | null>,
     getPosterTimeMs: (mediaId: number) =>
-      ipcRenderer.invoke('video:getPosterTimeMs', mediaId) as Promise<number | null>
+      ipcRenderer.invoke('video:getPosterTimeMs', mediaId) as Promise<number | null>,
+    toolsAvailable: () => ipcRenderer.invoke('video:toolsAvailable') as Promise<boolean>
   },
   tags: {
     list: () => ipcRenderer.invoke('tags:list') as Promise<Tag[]>,
@@ -130,7 +131,10 @@ const api = {
     setPrincipalTags: (id: number, tagIds: number[]) =>
       ipcRenderer.invoke('collections:set-principal-tags', id, tagIds),
     search: (q: string) => ipcRenderer.invoke('collections:search', q),
-    byPrincipalTag: (tagId: number) => ipcRenderer.invoke('collections:by-principal-tag', tagId)
+    byPrincipalTag: (tagId: number) => ipcRenderer.invoke('collections:by-principal-tag', tagId),
+    reorder: (orderedIds: number[]) => ipcRenderer.invoke('collections:reorder', orderedIds),
+    move: (id: number, direction: 'up' | 'down') =>
+      ipcRenderer.invoke('collections:move', id, direction)
   },
   crop: {
     get: (mediaId: number) => ipcRenderer.invoke('crop:get', mediaId),
@@ -168,7 +172,9 @@ const api = {
     savedList: () => ipcRenderer.invoke('search:saved-list'),
     savedCreate: (name: string, queryJson: string) =>
       ipcRenderer.invoke('search:saved-create', name, queryJson),
-    savedDelete: (id: number) => ipcRenderer.invoke('search:saved-delete', id)
+    savedDelete: (id: number) => ipcRenderer.invoke('search:saved-delete', id),
+    savedUpdate: (id: number, patch: { name?: string; query_json?: string }) =>
+      ipcRenderer.invoke('search:saved-update', id, patch)
   },
   fs: {
     rename: (mediaId: number, newName: string) => ipcRenderer.invoke('fs:rename', mediaId, newName),

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import type { Identifier } from '../../shared/types'
 import { IDENTIFIER_EDITOR_LAYER } from '../lib/modalLayer'
 import { useAppStore } from '../store/appStore'
-import { SearchAutocomplete } from './SearchAutocomplete'
-
+import { SearchAutocomplete, type SearchAutocompleteHandle } from './SearchAutocomplete'
+import { handleSearchAutocompleteKeyDown } from '../lib/searchAutocompleteKeys'
 export interface IdentifierEditorModalProps {
   identifier: Identifier | null
   onClose: () => void
@@ -21,6 +21,7 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
   const [queryCursor, setQueryCursor] = useState(0)
   const labelRef = useRef<HTMLInputElement>(null)
   const queryRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<SearchAutocompleteHandle>(null)
   const tags = useAppStore((s) => s.tags)
   const collections = useAppStore((s) => s.collections)
   const roots = useAppStore((s) => s.roots)
@@ -31,13 +32,17 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) {
-        e.stopPropagation()
-        onClose()
-      }
+      if (e.key !== 'Escape' || saving) return
+      const target = e.target as Node
+      const inModal =
+        target instanceof Element &&
+        target.closest(`[data-modal-layer="${IDENTIFIER_EDITOR_LAYER}"]`)
+      if (!inModal) return
+      e.stopPropagation()
+      onClose()
     }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [onClose, saving])
 
   const submit = async () => {
@@ -87,7 +92,13 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
     <div
       className="modal-backdrop modal-backdrop--stack"
       data-modal-layer={IDENTIFIER_EDITOR_LAYER}
-      onClick={saving ? undefined : onClose}
+      onMouseDown={
+        saving
+          ? undefined
+          : (e) => {
+              if (e.target === e.currentTarget) onClose()
+            }
+      }
       role="presentation"
     >
       <div
@@ -95,7 +106,6 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
         role="dialog"
         aria-labelledby="identifier-editor-title"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="identifier-editor-title" className="modal-title">
@@ -162,11 +172,12 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
 
         <div className="field">
           <label htmlFor="identifier-query">Search rule</label>
-          <div className="search-bar__input-wrap identifier-editor-modal__query-wrap">
+          <div className="identifier-editor-modal__query-wrap">
             <input
               id="identifier-query"
               ref={queryRef}
               type="text"
+              className="identifier-editor-modal__query-input"
               value={queryText}
               onChange={(e) => {
                 setQueryText(e.target.value)
@@ -180,12 +191,16 @@ export function IdentifierEditorModal({ identifier, onClose, onSaved }: Identifi
                 const t = e.target as HTMLInputElement
                 setQueryCursor(t.selectionStart ?? t.value.length)
               }}
+              onKeyDown={(e) => {
+                handleSearchAutocompleteKeyDown(e, autocompleteRef)
+              }}
               placeholder="e.g. untagged: or tag:hero"
               disabled={saving}
               spellCheck={false}
               autoComplete="off"
             />
             <SearchAutocomplete
+              ref={autocompleteRef}
               text={queryText}
               cursor={queryCursor}
               tags={tags}

@@ -28,6 +28,7 @@ import {
   saveShowThumbTagList
 } from '../lib/displayPrefs'
 import { rangeBetweenIds, toggleIdInList } from '../lib/mediaSelection'
+import { slideshowEligibleMedia } from '../lib/slideshowMedia'
 
 const api = () => window.collectionXiewer
 
@@ -211,9 +212,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   closePreview: () => set({ mainView: 'gallery', cropMode: false }),
   openSlideshow: () => {
     const { media, selectedMediaId } = get()
-    if (media.length === 0) return
+    const slideshowItems = slideshowEligibleMedia(media)
+    if (slideshowItems.length === 0) return
     const idx =
-      selectedMediaId != null ? Math.max(0, media.findIndex((m) => m.id === selectedMediaId)) : 0
+      selectedMediaId != null
+        ? slideshowItems.findIndex((m) => m.id === selectedMediaId)
+        : 0
     set({
       slideshowOpen: true,
       slideshowIndex: idx >= 0 ? idx : 0,

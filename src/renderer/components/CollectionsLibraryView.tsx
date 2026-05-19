@@ -1,5 +1,22 @@
 import { useMemo, useState } from 'react'
-import { FolderOpen } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { FolderOpen, GripVertical } from 'lucide-react'
 import type { Collection, CollectionWithStats } from '../../shared/types'
 import { useAppStore } from '../store/appStore'
 import { useTagDnd } from '../dnd/TagDndContext'
@@ -8,25 +25,49 @@ import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { NewCollectionModal } from '../ui/NewCollectionModal'
 
-function CollectionRow({
+function SortableCollectionRow({
   collection,
   active,
+  reorderEnabled,
   onSelect,
   onContextMenu
 }: {
   collection: CollectionWithStats
   active: boolean
+  reorderEnabled: boolean
   onSelect: () => void
   onContextMenu: (e: React.MouseEvent) => void
 }) {
-  const { setNodeRef, isDropHover } = useCollectionDrop(collection.id)
+  const { setNodeRef: setDropRef, isDropHover } = useCollectionDrop(collection.id)
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({
+    id: collection.id,
+    disabled: !reorderEnabled
+  })
+
+  const setRefs = (el: HTMLDivElement | null) => {
+    setDropRef(el)
+    setSortRef(el)
+  }
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  }
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
+      style={style}
       role="button"
       tabIndex={0}
-      className={`list-item collections-library__item${active ? ' active' : ''}${isDropHover ? ' collection-drop-hover' : ''}`}
+      className={`list-item collections-library__item${active ? ' active' : ''}${isDropHover ? ' collection-drop-hover' : ''}${isDragging ? ' collections-library__item--dragging' : ''}`}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -37,6 +78,18 @@ function CollectionRow({
       onContextMenu={onContextMenu}
       title={`${collection.description_md ?? collection.name} — drop media here to add`}
     >
+      {reorderEnabled ? (
+        <button
+          type="button"
+          className="collections-library__drag-handle"
+          aria-label={`Reorder ${collection.name}`}
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={14} aria-hidden />
+        </button>
+      ) : null}
       <FolderOpen size={14} className="collections-library__icon" aria-hidden />
       <span className="collections-library__label">{collection.name}</span>
       <span className="collections-library__count">{collection.member_count}</span>
@@ -61,11 +114,33 @@ export function CollectionsLibraryView() {
     null
   )
   const [confirmDelete, setConfirmDelete] = useState<CollectionWithStats | null>(null)
+  const [orderedIds, setOrderedIds] = useState<number[]>([])
+
+  const reorderEnabled = !query.trim()
 
   const displayed = useMemo(() => {
     if (!query.trim()) return collections
     return searchResults ?? collections
   }, [collections, query, searchResults])
+
+  const sortableIds = useMemo(() => {
+    if (!reorderEnabled) return []
+    if (orderedIds.length === collections.length && collections.every((c) => orderedIds.includes(c.id))) {
+      return orderedIds
+    }
+    return collections.map((c) => c.id)
+  }, [collections, orderedIds, reorderEnabled])
+
+  const displayedById = useMemo(() => {
+    if (!reorderEnabled) return displayed
+    const map = new Map(collections.map((c) => [c.id, c]))
+    return sortableIds.map((id) => map.get(id)).filter((c): c is CollectionWithStats => c != null)
+  }, [reorderEnabled, displayed, collections, sortableIds])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const runSearch = async (q: string) => {
     const trimmed = q.trim()
@@ -100,8 +175,44 @@ export function CollectionsLibraryView() {
     await refreshMedia()
   }
 
+  const onDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = sortableIds.indexOf(Number(active.id))
+    const newIndex = sortableIds.indexOf(Number(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(sortableIds, oldIndex, newIndex)
+    setOrderedIds(next)
+    await window.collectionXiewer.collections.reorder(next)
+    await refreshCollections()
+  }
+
+  const moveCollection = async (col: CollectionWithStats, direction: 'up' | 'down') => {
+    await window.collectionXiewer.collections.move(col.id, direction)
+    await refreshCollections()
+    setOrderedIds([])
+  }
+
   const menuItems: ContextMenuItem[] = menu
     ? [
+        ...(reorderEnabled
+          ? [
+              {
+                label: 'Move up',
+                onClick: () => {
+                  void moveCollection(menu.collection, 'up')
+                  setMenu(null)
+                }
+              },
+              {
+                label: 'Move down',
+                onClick: () => {
+                  void moveCollection(menu.collection, 'down')
+                  setMenu(null)
+                }
+              }
+            ]
+          : []),
         {
           label: 'Rename…',
           onClick: () => {
@@ -124,6 +235,21 @@ export function CollectionsLibraryView() {
         }
       ]
     : []
+
+  const listItems = reorderEnabled ? displayedById : displayed
+  const listBody = listItems.map((c) => (
+    <SortableCollectionRow
+      key={c.id}
+      collection={c}
+      active={selectedCollectionId === c.id}
+      reorderEnabled={reorderEnabled}
+      onSelect={() => selectCollection(c.id)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setMenu({ x: e.clientX, y: e.clientY, collection: c })
+      }}
+    />
+  ))
 
   return (
     <div className={`collections-library${isMediaDrag ? ' collections-library--drop-active' : ''}`}>
@@ -152,7 +278,9 @@ export function CollectionsLibraryView() {
       <p className="collections-library__hint">
         {isMediaDrag
           ? 'Drop on a collection below to add the selected media.'
-          : 'Drag thumbnails from the gallery and drop them on a collection below.'}
+          : reorderEnabled
+            ? 'Drag collections to reorder. Drag thumbnails from the gallery onto a collection to add them.'
+            : 'Drag thumbnails from the gallery and drop them on a collection below.'}
       </p>
 
       <button
@@ -163,18 +291,15 @@ export function CollectionsLibraryView() {
         All media
       </button>
 
-      {displayed.map((c) => (
-        <CollectionRow
-          key={c.id}
-          collection={c}
-          active={selectedCollectionId === c.id}
-          onSelect={() => selectCollection(c.id)}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            setMenu({ x: e.clientX, y: e.clientY, collection: c })
-          }}
-        />
-      ))}
+      {reorderEnabled ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void onDragEnd(e)}>
+          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            {listBody}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        listBody
+      )}
 
       {displayed.length === 0 && query.trim() ? (
         <p className="empty-hint">No collections match your search.</p>
