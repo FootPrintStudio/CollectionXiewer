@@ -5,6 +5,7 @@ import { isIdentifierEditorLayerNode } from '../lib/modalLayer'
 import { useAppStore } from '../store/appStore'
 import { SettingsIdentifiersPanel } from './SettingsIdentifiersPanel'
 import { IdentifierEditorModal } from './IdentifierEditorModal'
+import { UpdateDialog } from './UpdateDialog'
 
 export function SettingsMenu() {
   const showThumbTagList = useAppStore((s) => s.showThumbTagList)
@@ -15,7 +16,18 @@ export function SettingsMenu() {
   const [open, setOpen] = useState(false)
   const [identifierEdit, setIdentifierEdit] = useState<Identifier | null | 'new' | null>(null)
   const [videoToolsOk, setVideoToolsOk] = useState<boolean | null>(null)
+  const [updateOpen, setUpdateOpen] = useState(false)
+  const [updatePending, setUpdatePending] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    void window.collectionXiewer.updater.getState().then((s) => {
+      if (s.phase === 'available' || s.phase === 'downloaded') setUpdatePending(true)
+    })
+    return window.collectionXiewer.updater.onStatus((s) => {
+      if (s.phase === 'available' || s.phase === 'downloaded') setUpdatePending(true)
+    })
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -25,7 +37,7 @@ export function SettingsMenu() {
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (identifierEdit != null) return
+      if (identifierEdit != null || updateOpen) return
       if (isIdentifierEditorLayerNode(e.target as Node)) return
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false)
@@ -33,7 +45,12 @@ export function SettingsMenu() {
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (identifierEdit != null || isIdentifierEditorLayerNode(document.activeElement)) return
+        if (
+          identifierEdit != null ||
+          updateOpen ||
+          isIdentifierEditorLayerNode(document.activeElement)
+        )
+          return
         setOpen(false)
       }
     }
@@ -43,7 +60,7 @@ export function SettingsMenu() {
       document.removeEventListener('mousedown', onDoc)
       window.removeEventListener('keydown', onKey)
     }
-  }, [open, identifierEdit])
+  }, [open, identifierEdit, updateOpen])
 
   const onIdentifierSaved = () => {
     bumpIdentifiersRevision()
@@ -71,17 +88,30 @@ export function SettingsMenu() {
       <div className="settings-menu" ref={panelRef}>
         <button
           type="button"
-          className={`settings-menu__trigger${open ? ' settings-menu__trigger--open' : ''}`}
+          className={`settings-menu__trigger${open ? ' settings-menu__trigger--open' : ''}${updatePending ? ' settings-menu__trigger--update' : ''}`}
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-haspopup="dialog"
-          title="Settings"
+          title={updatePending ? 'Settings — update available' : 'Settings'}
         >
           <Settings size={18} aria-hidden />
           Settings
         </button>
         {open ? (
           <div className="settings-menu__panel" role="dialog" aria-label="Settings">
+            <h2 className="settings-menu__panel-title">Updates</h2>
+            <button
+              type="button"
+              className="settings-menu__link-btn"
+              onClick={() => {
+                setOpen(false)
+                setUpdateOpen(true)
+                setUpdatePending(false)
+              }}
+            >
+              Check for updates…
+              {updatePending ? ' (available)' : ''}
+            </button>
             <h2 className="settings-menu__panel-title">Display</h2>
             <label className="settings-menu__toggle">
               <input
@@ -115,6 +145,7 @@ export function SettingsMenu() {
           </div>
         ) : null}
       </div>
+      {updateOpen ? <UpdateDialog onClose={() => setUpdateOpen(false)} /> : null}
       {identifierEdit != null ? (
         <IdentifierEditorModal
           key={identifierEdit === 'new' ? 'new' : identifierEdit.id}

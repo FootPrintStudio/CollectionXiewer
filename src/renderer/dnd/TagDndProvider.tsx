@@ -37,6 +37,8 @@ import {
   type MediaTagDragData,
   type TagDragData
 } from './tagDnd'
+import { isBoardDropId } from './boardDnd'
+import { useBoardStore } from '../store/boardStore'
 
 type ReparentTarget =
   | { kind: 'parent'; parentId: number | null }
@@ -148,6 +150,16 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
     setDraggingTag(null)
     setDraggingMediaTag(null)
     setDraggingMediaIds([])
+
+    if (activeData?.type === 'media' && overId && isBoardDropId(overId)) {
+      clear()
+      const { activeFile, dropWorldAt, addMediaItems } = useBoardStore.getState()
+      if (activeFile) {
+        addMediaItems(activeData.mediaIds, dropWorldAt ?? { x: 120, y: 120 })
+        useAppStore.getState().setMainView('board')
+      }
+      return
+    }
 
     if (activeData?.type === 'media' && collectionId != null) {
       clear()

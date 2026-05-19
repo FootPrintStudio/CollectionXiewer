@@ -4,8 +4,9 @@ import { useTagDnd } from '../dnd/TagDndContext'
 import { TagTreeView } from './TagTreeView'
 import { WatchRootTreeView } from './WatchRootTreeView'
 import { CollectionsLibraryView } from './CollectionsLibraryView'
+import { BoardsLibraryView } from './BoardsLibraryView'
 
-type LibraryTab = 'folders' | 'collections' | 'tags'
+type LibraryTab = 'folders' | 'collections' | 'boards' | 'tags'
 
 export function LibraryPanel() {
   const [tab, setTab] = useState<LibraryTab>('folders')
@@ -57,6 +58,15 @@ export function LibraryPanel() {
         <button
           type="button"
           role="tab"
+          aria-selected={tab === 'boards'}
+          className={tab === 'boards' ? 'primary' : ''}
+          onClick={() => setTab('boards')}
+        >
+          Boards Library
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === 'tags'}
           className={tab === 'tags' ? 'primary' : ''}
           onClick={() => setTab('tags')}
@@ -87,6 +97,8 @@ export function LibraryPanel() {
         )}
 
         {tab === 'collections' && <CollectionsLibraryView />}
+
+        {tab === 'boards' && <BoardsLibraryView />}
 
         {tab === 'tags' && <TagTreeView />}
       </div>

@@ -1,6 +1,6 @@
 {
   "name": "collection-xiewer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local-first media browser with rich tagging for art/reference archives",
   "main": "./out/main/index.js",
   "scripts": {
@@ -16,7 +16,8 @@
     "test:video": "npx tsx src/main/lib/videoThumb.test.ts",
     "test": "npm run test:parser && npm run test:fts && npm run test:ast && npm run test:raster && npm run test:heic && npm run test:video",
     "postinstall": "electron-builder install-app-deps",
-    "dist": "npm run build && electron-builder --linux AppImage"
+    "dist": "npm run build && electron-builder --linux AppImage",
+    "dist:publish": "npm run build && electron-builder --linux AppImage --publish always"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.2",
@@ -30,6 +31,7 @@
     "bmp-js": "^0.1.0",
     "chokidar": "^4.0.3",
     "dompurify": "^3.2.4",
+    "electron-updater": "^6.8.3",
     "gifuct-js": "^2.1.2",
     "heic-decode": "^2.1.0",
     "lucide-react": "^0.475.0",
@@ -60,11 +62,19 @@
   "build": {
     "appId": "com.collectionxiewer.app",
     "productName": "CollectionXiewer",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "FootPrintStudio",
+        "repo": "CollectionXiewer"
+      }
+    ],
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Graphics"
+      "category": "Graphics",
+      "artifactName": "CollectionXiewer-${version}.${ext}"
     },
     "files": [
       "out/**/*",

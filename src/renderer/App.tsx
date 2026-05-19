@@ -5,6 +5,7 @@ import { DetailsPanel } from './components/DetailsPanel'
 import { SearchBar } from './components/SearchBar'
 import { GalleryView } from './views/Gallery/GalleryView'
 import { MediaPreviewer } from './views/Previewer/MediaPreviewer'
+import { BoardWithGalleryView } from './views/Board/BoardWithGalleryView'
 import { useAppStore } from './store/appStore'
 import { PanelResizeHandle } from './ui/PanelResizeHandle'
 import {
@@ -97,7 +98,9 @@ export function App() {
         </div>
         <div className="content-area">
           <BulkTagBar />
-          {mainView === 'gallery' ? <GalleryView /> : <MediaPreviewer />}
+          {mainView === 'gallery' && <GalleryView />}
+          {mainView === 'preview' && <MediaPreviewer />}
+          {mainView === 'board' && <BoardWithGalleryView />}
         </div>
       </main>
       <div className="panel-column panel-column--details" style={{ width: detailsPanelWidth }}>

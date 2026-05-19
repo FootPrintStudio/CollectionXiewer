@@ -14,6 +14,8 @@ import * as videoPoster from '../services/videoPoster'
 import * as identifiers from '../services/identifiers'
 import * as identifierMatch from '../services/identifierMatch'
 import * as fsOps from '../services/fsOps'
+import * as boards from '../services/boards'
+import type { BoardDocument } from '../../shared/boardSchema'
 import { getDb } from '../db/database'
 import { exportCropped } from '../services/crop'
 import { indexFile } from '../services/indexer'
@@ -22,11 +24,19 @@ import {
   backfillExoticRasterDimensions
 } from '../services/exoticRasterDimensions'
 import { ensureVideoTools } from '../lib/videoThumb'
+import { GITHUB_RELEASES_URL } from '../../shared/updaterTypes'
+import {
+  checkForUpdates,
+  downloadUpdate,
+  getUpdaterStatus,
+  quitAndInstall
+} from '../services/updater'
 
 let mainWindow: BrowserWindow | null = null
 
 export function setMainWindow(win: BrowserWindow | null): void {
   mainWindow = win
+  boards.setBoardsMainWindow(win)
 }
 
 export function registerIpcHandlers(): void {
@@ -292,4 +302,39 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('fs:reveal', (_e, mediaId: number) => fsOps.revealMedia(mediaId))
 
   ipcMain.handle('shell:open-external', (_e, url: string) => shell.openExternal(url))
+
+  ipcMain.handle('boards:get-root', () => boards.getBoardsRootPath())
+  ipcMain.handle('boards:set-root', (_e, path: string | null) => {
+    boards.setBoardsRootPath(path)
+  })
+  ipcMain.handle('boards:pick-root', () => boards.pickBoardsRootFolder())
+  ipcMain.handle('boards:list', () => boards.listBoards())
+  ipcMain.handle('boards:read', (_e, fileName: string) => boards.readBoard(fileName))
+  ipcMain.handle('boards:write', (_e, fileName: string, doc: BoardDocument) =>
+    boards.writeBoard(fileName, doc)
+  )
+  ipcMain.handle('boards:create', (_e, name: string) => boards.createBoard(name))
+  ipcMain.handle('boards:delete', (_e, fileName: string) => boards.deleteBoard(fileName))
+  ipcMain.handle('boards:rename', (_e, fileName: string, name: string) =>
+    boards.renameBoardFile(fileName, name)
+  )
+  ipcMain.handle('boards:export-png', async (_e, fileName: string) => {
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: `${fileName.replace(/\.cxboard\.json$/, '')}.png`,
+      filters: [{ name: 'PNG', extensions: ['png'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    await boards.exportBoardPng(fileName, result.filePath)
+    return result.filePath
+  })
+
+  ipcMain.handle('updater:get-state', () => getUpdaterStatus())
+  ipcMain.handle('updater:check', () => checkForUpdates())
+  ipcMain.handle('updater:download', () => downloadUpdate())
+  ipcMain.handle('updater:quit-and-install', () => {
+    quitAndInstall()
+  })
+  ipcMain.handle('updater:open-releases', () => {
+    void shell.openExternal(GITHUB_RELEASES_URL)
+  })
 }

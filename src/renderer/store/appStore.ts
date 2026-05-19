@@ -51,7 +51,7 @@ interface AppState {
   searchQueryText: string
   searchAst: SearchNode
   cropMode: boolean
-  mainView: 'gallery' | 'preview'
+  mainView: 'gallery' | 'preview' | 'board'
   detailsFocus: DetailsFocus
   mediaTagsRevision: number
   slideshowOpen: boolean
@@ -79,7 +79,7 @@ interface AppState {
   setSelectedCollectionId: (id: number | null) => void
   setSearchQuery: (text: string, ast: SearchNode) => void
   setCropMode: (v: boolean) => void
-  setMainView: (v: 'gallery' | 'preview') => void
+  setMainView: (v: 'gallery' | 'preview' | 'board') => void
   setDetailsFocus: (v: DetailsFocus) => void
   openPreview: (mediaId: number) => void
   closePreview: () => void

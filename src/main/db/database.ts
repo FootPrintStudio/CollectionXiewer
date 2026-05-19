@@ -188,6 +188,16 @@ function migrateTagIcons(database: Database.Database): void {
   }
 }
 
+function migrateAppPrefs(database: Database.Database): void {
+  if (tableExists(database, 'app_prefs')) return
+  database.exec(`
+    CREATE TABLE app_prefs (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `)
+}
+
 function migrateCollectionSortOrder(database: Database.Database): void {
   if (!tableExists(database, 'collections') || columnExists(database, 'collections', 'sort_order')) {
     return
@@ -216,6 +226,7 @@ function migrate(database: Database.Database): void {
   migrateTagSortOrder(database)
   migrateMediaTagSuggestions(database)
   migrateCollectionSortOrder(database)
+  migrateAppPrefs(database)
 
   database.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS tags_fts USING fts5(

@@ -2,6 +2,11 @@ import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { getDb, closeDb } from './db/database'
 import { registerIpcHandlers, setMainWindow } from './ipc/handlers'
+import {
+  initUpdater,
+  scheduleStartupUpdateCheck,
+  setUpdaterMainWindow
+} from './services/updater'
 import { installMediaProtocolHandler, registerMediaScheme } from './protocol/mediaProtocol'
 import { stopAllWatchers } from './services/watcher'
 import { initWatchers } from './services/roots'
@@ -29,7 +34,11 @@ function createWindow(): void {
   })
 
   setMainWindow(mainWindow)
-  mainWindow.on('ready-to-show', () => mainWindow?.show())
+  setUpdaterMainWindow(mainWindow)
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
+    scheduleStartupUpdateCheck()
+  })
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -40,6 +49,7 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null
     setMainWindow(null)
+    setUpdaterMainWindow(null)
   })
 }
 
@@ -48,6 +58,7 @@ app.whenReady().then(() => {
   getDb()
   rebuildAllClosure()
   registerIpcHandlers()
+  initUpdater()
   initWatchers()
   createWindow()
 

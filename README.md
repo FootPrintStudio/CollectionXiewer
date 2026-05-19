@@ -51,6 +51,20 @@ npm run dist   # Linux AppImage
 
 Output: `dist/CollectionXiewer-<version>.AppImage`
 
+## Updates
+
+Installed builds check GitHub Releases for updates (Settings → **Check for updates…**, or automatically shortly after startup). Downloads require your confirmation; use **Restart to update** when the new AppImage is ready.
+
+Updates only work in the packaged AppImage, not in `npm run dev`. The AppImage file must be writable (e.g. in your home folder); if auto-replace fails, use **GitHub releases** in the dialog to download manually.
+
+### Releasing a new version (maintainers)
+
+1. Bump `"version"` in `package.json` (must match the git tag without the `v` prefix).
+2. Commit and push, then create and push a tag: `git tag v0.2.1 && git push origin v0.2.1`
+3. GitHub Actions (`.github/workflows/release.yml`) builds the AppImage and publishes it to [Releases](https://github.com/FootPrintStudio/CollectionXiewer/releases) with `latest-linux.yml` for the in-app updater.
+
+Local publish (optional): `export GH_TOKEN=<token-with-repo-scope>` then `npm run dist:publish`.
+
 ## Install (AppImage)
 
 ```bash

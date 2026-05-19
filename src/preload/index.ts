@@ -10,6 +10,8 @@ import type {
   TagGroup
 } from '../shared/types'
 import type { SearchNode } from '../shared/searchAst'
+import type { BoardDocument, BoardSummary } from '../shared/boardSchema'
+import type { UpdaterStatus } from '../shared/updaterTypes'
 
 const api = {
   roots: {
@@ -183,6 +185,39 @@ const api = {
   },
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
+  },
+  boards: {
+    getRoot: () => ipcRenderer.invoke('boards:get-root') as Promise<string | null>,
+    setRoot: (path: string | null) => ipcRenderer.invoke('boards:set-root', path),
+    pickRoot: () => ipcRenderer.invoke('boards:pick-root') as Promise<string | null>,
+    list: () => ipcRenderer.invoke('boards:list') as Promise<BoardSummary[]>,
+    read: (fileName: string) => ipcRenderer.invoke('boards:read', fileName) as Promise<BoardDocument>,
+    write: (fileName: string, doc: BoardDocument) =>
+      ipcRenderer.invoke('boards:write', fileName, doc) as Promise<BoardDocument>,
+    create: (name: string) =>
+      ipcRenderer.invoke('boards:create', name) as Promise<{ fileName: string; document: BoardDocument }>,
+    delete: (fileName: string) => ipcRenderer.invoke('boards:delete', fileName),
+    rename: (fileName: string, name: string) =>
+      ipcRenderer.invoke('boards:rename', fileName, name) as Promise<{
+        fileName: string
+        document: BoardDocument
+      }>,
+    exportPng: (fileName: string) =>
+      ipcRenderer.invoke('boards:export-png', fileName) as Promise<string | null>
+  },
+  updater: {
+    getState: () => ipcRenderer.invoke('updater:get-state') as Promise<UpdaterStatus>,
+    check: () => ipcRenderer.invoke('updater:check') as Promise<UpdaterStatus>,
+    download: () => ipcRenderer.invoke('updater:download') as Promise<UpdaterStatus>,
+    quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install') as Promise<void>,
+    openReleases: () => ipcRenderer.invoke('updater:open-releases') as Promise<void>,
+    onStatus: (callback: (status: UpdaterStatus) => void) => {
+      const listener = (_e: unknown, status: UpdaterStatus) => callback(status)
+      ipcRenderer.on('updater:status', listener)
+      return () => {
+        ipcRenderer.removeListener('updater:status', listener)
+      }
+    }
   }
 }
 
