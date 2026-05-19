@@ -27,6 +27,21 @@ npm run build
 npm run dist   # Linux AppImage
 ```
 
+Output: `dist/CollectionXiewer-<version>.AppImage`
+
+## Install (AppImage)
+
+```bash
+chmod +x CollectionXiewer-*.AppImage
+./CollectionXiewer-*.AppImage
+```
+
+On Ubuntu 24.04+ without FUSE, either install `libfuse2t64` or run:
+
+```bash
+./CollectionXiewer-*.AppImage --appimage-extract-and-run
+```
+
 ## Data
 
 SQLite database: `~/.config/CollectionXiewer/library.db`

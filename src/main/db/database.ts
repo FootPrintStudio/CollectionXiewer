@@ -1,7 +1,8 @@
-import Database from 'better-sqlite3'
+import type Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
+import { getBetterSqlite3 } from '../lib/lazyNative'
 import { loadSchema } from './migrate'
 
 let db: Database.Database | null = null
@@ -14,7 +15,7 @@ export function getDbPath(): string {
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(getDbPath())
+    db = new (getBetterSqlite3())(getDbPath())
     db.pragma('journal_mode = WAL')
     db.pragma('foreign_keys = ON')
     migrate(db)

@@ -1,6 +1,6 @@
 {
   "name": "collection-xiewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local-first media browser with rich tagging for art/reference archives",
   "main": "./out/main/index.js",
   "scripts": {
@@ -61,6 +61,11 @@
     "files": [
       "out/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**",
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**"
     ]
   }
 }

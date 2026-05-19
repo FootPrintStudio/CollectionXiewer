@@ -1,4 +1,4 @@
-import sharp from 'sharp'
+import { getSharp } from '../lib/lazyNative'
 import { getCrop, pixelRect } from './crop'
 import type { CropRect } from '../../shared/types'
 import { readPosterFile } from './videoPoster'
@@ -35,7 +35,7 @@ export async function generateThumbnail(
   if (mediaId) {
     const poster = readPosterFile(mediaId)
     if (poster) {
-      const buf = await sharp(poster)
+      const buf = await getSharp()(poster)
         .resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 82 })
         .toBuffer()
@@ -45,6 +45,7 @@ export async function generateThumbnail(
     }
   }
 
+  const sharp = getSharp()
   let pipeline = sharp(absolutePath, { animated: absolutePath.toLowerCase().endsWith('.gif') })
 
   if (crop) {

@@ -1,4 +1,4 @@
-import sharp from 'sharp'
+import { getSharp } from '../lib/lazyNative'
 import { getDb } from '../db/database'
 import type { CropRect, MediaCrop } from '../../shared/types'
 
@@ -28,6 +28,7 @@ export async function exportCropped(
   rect: CropRect,
   outPath: string
 ): Promise<void> {
+  const sharp = getSharp()
   const meta = await sharp(absolutePath).metadata()
   const W = meta.width ?? 1
   const H = meta.height ?? 1

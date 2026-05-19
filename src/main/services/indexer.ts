@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { extname, relative } from 'node:path'
 import mime from 'mime-types'
-import sharp from 'sharp'
+import { getSharp } from '../lib/lazyNative'
 import { getDb } from '../db/database'
 import type { MediaKind, MediaItem } from '../../shared/types'
 import { enrichMedia } from './mediaPaths'
@@ -62,7 +62,7 @@ export async function indexFile(
 
   if (kind === 'image' || kind === 'motion') {
     try {
-      const meta = await sharp(absoluteFilePath, { animated: kind === 'motion' }).metadata()
+      const meta = await getSharp()(absoluteFilePath, { animated: kind === 'motion' }).metadata()
       width = meta.width ?? null
       height = meta.height ?? null
     } catch {
