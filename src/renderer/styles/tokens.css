@@ -1,0 +1,41 @@
+:root {
+  /* Typography */
+  --font-display: 'Orbitron', 'Michroma', system-ui, sans-serif;
+  --font-mono: 'Share Tech Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Share Tech Mono', system-ui, sans-serif;
+
+  /* Geometry */
+  --radius: 0;
+  --radius-sm: 0;
+  --chip-radius: 0;
+  --shadow: 2px 2px 0 rgba(0, 0, 0, 0.85);
+  --shadow-hud: 3px 3px 0 rgba(0, 0, 0, 0.9);
+
+  /* Layout */
+  --library-panel-w: 260px;
+  --tag-panel-w: 320px;
+  --previewer-min-h: 320px;
+
+  /* Retro-Futurism Grunger palette */
+  --bg: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-panel: #0e0e0e;
+  --surface: #141414;
+  --border: rgba(232, 236, 240, 0.2);
+  --border-dashed: rgba(232, 236, 240, 0.14);
+  --border-strong: rgba(232, 236, 240, 0.42);
+  --text: #e8ecef;
+  --text-muted: #7a8288;
+  --accent: #9eb4c8;
+  --accent-hover: #b8ccd8;
+  --accent-muted: rgba(158, 180, 200, 0.12);
+  --chip-bg: #1a1a1a;
+  --soft-chip: #161c22;
+  --danger: #c45c5c;
+  /* Grain tile URL set at runtime (initGrainTexture.ts); size for background-size */
+  --grain-tile: none;
+  --grain-size: 192px;
+  --grid-opacity: 0.04;
+  --hud-bracket-size: 6px;
+  --hud-bracket-weight: 1px;
+}
