@@ -1,6 +1,7 @@
 import { getDb } from '../db/database'
 import type { Collection, CollectionMember, CollectionWithStats, MediaItem, Tag } from '../../shared/types'
 import { enrichMedia } from './mediaPaths'
+import { getHardLinkedTagIds, getSoftSuggestions } from './tags'
 
 export function listCollections(): CollectionWithStats[] {
   return getDb()
@@ -122,6 +123,32 @@ export function setPrincipalTags(collectionId: number, tagIds: number[]): void {
     `INSERT INTO collection_principal_tags (collection_id, tag_id) VALUES (?, ?)`
   )
   for (const tagId of tagIds) stmt.run(collectionId, tagId)
+}
+
+/** Adds a principal tag plus any hard-linked tags (same behavior as media tagging). */
+export function addPrincipalTag(collectionId: number, tagId: number): Tag[] {
+  const existingIds = getPrincipalTags(collectionId).map((t) => t.id)
+  const merged = [...existingIds]
+  for (const id of [tagId, ...getHardLinkedTagIds(tagId)]) {
+    if (!merged.includes(id)) merged.push(id)
+  }
+  setPrincipalTags(collectionId, merged)
+  return getPrincipalTags(collectionId)
+}
+
+/** Soft connection targets from principal tags not already principal on this collection. */
+export function getPrincipalTagSuggestions(collectionId: number): Tag[] {
+  const principal = getPrincipalTags(collectionId)
+  const principalIds = new Set(principal.map((t) => t.id))
+  const byId = new Map<number, Tag>()
+  for (const tag of principal) {
+    for (const soft of getSoftSuggestions(tag.id)) {
+      if (!principalIds.has(soft.id)) byId.set(soft.id, soft)
+    }
+  }
+  return [...byId.values()].sort((a, b) =>
+    a.display_name.localeCompare(b.display_name, undefined, { sensitivity: 'base' })
+  )
 }
 
 export function getPrincipalTags(collectionId: number): Tag[] {

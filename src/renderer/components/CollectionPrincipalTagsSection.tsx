@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Tag } from '../../shared/types'
 import { formatTagLabel } from '../../shared/tagDisplay'
 import { tagChipStyle } from '../lib/tagChipStyle'
@@ -7,6 +7,7 @@ import { TagChipContent } from './TagChipContent'
 import { useCollectionPrincipalTagDrop } from '../dnd/useCollectionPrincipalTagDrop'
 import {
   addPrincipalTagToCollection,
+  loadPrincipalTagSuggestions,
   removePrincipalTagFromCollection
 } from '../lib/collectionPrincipalTags'
 import { SectionHelp } from '../ui/SectionHelp'
@@ -60,6 +61,20 @@ function PrincipalTagChip({
   )
 }
 
+function SoftSuggestionChip({ tag, onApply }: { tag: Tag; onApply: () => void }) {
+  const color = useResolvedTagColor(tag)
+  return (
+    <button
+      type="button"
+      className="chip soft subject-card__soft-chip"
+      style={tagChipStyle(color)}
+      onClick={onApply}
+    >
+      <TagChipContent tag={tag} />
+    </button>
+  )
+}
+
 export function CollectionPrincipalTagsSection({
   collectionId,
   tags,
@@ -70,6 +85,15 @@ export function CollectionPrincipalTagsSection({
   const { setNodeRef, isDropHover } = useCollectionPrincipalTagDrop(collectionId)
   const [tagInput, setTagInput] = useState('')
   const [suggestions, setSuggestions] = useState<Tag[]>([])
+  const [softSuggestions, setSoftSuggestions] = useState<Tag[]>([])
+
+  const refreshSoftSuggestions = useCallback(async () => {
+    setSoftSuggestions(await loadPrincipalTagSuggestions(collectionId))
+  }, [collectionId])
+
+  useEffect(() => {
+    void refreshSoftSuggestions()
+  }, [refreshSoftSuggestions, tags])
 
   const applyTag = async (tagId: number) => {
     await addPrincipalTagToCollection(collectionId, tagId)
@@ -97,7 +121,8 @@ export function CollectionPrincipalTagsSection({
         Principal tags
         <SectionHelp label="Principal tags help">
           Tags that characterize this collection. Drag tags from the Tags Library here, or add
-          below. Used in search filters (<code>principal:</code>).
+          below. Hard connections apply automatically; soft connections appear as suggestions.
+          Used in search filters (<code>principal:</code>).
         </SectionHelp>
       </p>
 
@@ -120,6 +145,21 @@ export function CollectionPrincipalTagsSection({
           )}
         </div>
       </div>
+
+      {softSuggestions.length > 0 ? (
+        <div className="subject-card__soft-suggestions">
+          <p className="subject-card__soft-label">Suggested</p>
+          <div className="subject-card__soft-chips">
+            {softSuggestions.map((t) => (
+              <SoftSuggestionChip
+                key={t.id}
+                tag={t}
+                onApply={() => void applyTag(t.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <input
         className="subject-card__input"

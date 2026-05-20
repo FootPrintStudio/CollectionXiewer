@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -25,16 +25,79 @@ import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { NewCollectionModal } from '../ui/NewCollectionModal'
 
-function SortableCollectionRow({
+function CollectionListRow({
   collection,
   active,
-  reorderEnabled,
+  isDropHover,
+  setDropRef,
+  onSelect,
+  onContextMenu,
+  dragHandle
+}: {
+  collection: CollectionWithStats
+  active: boolean
+  isDropHover: boolean
+  setDropRef: (el: HTMLDivElement | null) => void
+  onSelect: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+  dragHandle?: ReactNode
+}) {
+  return (
+    <div
+      ref={setDropRef}
+      role="button"
+      tabIndex={0}
+      className={`list-item collections-library__item${active ? ' active' : ''}${isDropHover ? ' collection-drop-hover' : ''}`}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
+      onContextMenu={onContextMenu}
+      title={`${collection.description_md ?? collection.name} — drop media here to add`}
+    >
+      {dragHandle}
+      <FolderOpen size={14} className="collections-library__icon" aria-hidden />
+      <span className="collections-library__label">{collection.name}</span>
+      <span className="collections-library__count">{collection.member_count}</span>
+    </div>
+  )
+}
+
+function CollectionDropRow({
+  collection,
+  active,
   onSelect,
   onContextMenu
 }: {
   collection: CollectionWithStats
   active: boolean
-  reorderEnabled: boolean
+  onSelect: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+}) {
+  const { setNodeRef, isDropHover } = useCollectionDrop(collection.id)
+  return (
+    <CollectionListRow
+      collection={collection}
+      active={active}
+      isDropHover={isDropHover}
+      setDropRef={setNodeRef}
+      onSelect={onSelect}
+      onContextMenu={onContextMenu}
+    />
+  )
+}
+
+function SortableCollectionRow({
+  collection,
+  active,
+  onSelect,
+  onContextMenu
+}: {
+  collection: CollectionWithStats
+  active: boolean
   onSelect: () => void
   onContextMenu: (e: React.MouseEvent) => void
 }) {
@@ -46,10 +109,7 @@ function SortableCollectionRow({
     transform,
     transition,
     isDragging
-  } = useSortable({
-    id: collection.id,
-    disabled: !reorderEnabled
-  })
+  } = useSortable({ id: collection.id })
 
   const setRefs = (el: HTMLDivElement | null) => {
     setDropRef(el)
@@ -78,18 +138,16 @@ function SortableCollectionRow({
       onContextMenu={onContextMenu}
       title={`${collection.description_md ?? collection.name} — drop media here to add`}
     >
-      {reorderEnabled ? (
-        <button
-          type="button"
-          className="collections-library__drag-handle"
-          aria-label={`Reorder ${collection.name}`}
-          onClick={(e) => e.stopPropagation()}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical size={14} aria-hidden />
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="collections-library__drag-handle"
+        aria-label={`Reorder ${collection.name}`}
+        onClick={(e) => e.stopPropagation()}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={14} aria-hidden />
+      </button>
       <FolderOpen size={14} className="collections-library__icon" aria-hidden />
       <span className="collections-library__label">{collection.name}</span>
       <span className="collections-library__count">{collection.member_count}</span>
@@ -237,19 +295,22 @@ export function CollectionsLibraryView() {
     : []
 
   const listItems = reorderEnabled ? displayedById : displayed
-  const listBody = listItems.map((c) => (
-    <SortableCollectionRow
-      key={c.id}
-      collection={c}
-      active={selectedCollectionId === c.id}
-      reorderEnabled={reorderEnabled}
-      onSelect={() => selectCollection(c.id)}
-      onContextMenu={(e) => {
+  const useSortableList = reorderEnabled && !isMediaDrag
+  const listBody = listItems.map((c) => {
+    const rowProps = {
+      collection: c,
+      active: selectedCollectionId === c.id,
+      onSelect: () => selectCollection(c.id),
+      onContextMenu: (e: React.MouseEvent) => {
         e.preventDefault()
         setMenu({ x: e.clientX, y: e.clientY, collection: c })
-      }}
-    />
-  ))
+      }
+    }
+    if (useSortableList) {
+      return <SortableCollectionRow key={c.id} {...rowProps} />
+    }
+    return <CollectionDropRow key={c.id} {...rowProps} />
+  })
 
   return (
     <div className={`collections-library${isMediaDrag ? ' collections-library--drop-active' : ''}`}>
@@ -291,7 +352,7 @@ export function CollectionsLibraryView() {
         All media
       </button>
 
-      {reorderEnabled ? (
+      {useSortableList ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void onDragEnd(e)}>
           <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
             {listBody}

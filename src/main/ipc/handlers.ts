@@ -228,6 +228,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('collections:set-principal-tags', (_e, id: number, tagIds: number[]) =>
     collections.setPrincipalTags(id, tagIds)
   )
+  ipcMain.handle('collections:add-principal-tag', (_e, id: number, tagId: number) =>
+    collections.addPrincipalTag(id, tagId)
+  )
+  ipcMain.handle('collections:principal-tag-suggestions', (_e, id: number) =>
+    collections.getPrincipalTagSuggestions(id)
+  )
   ipcMain.handle('collections:search', (_e, q: string) => collections.searchCollectionsFts(q))
   ipcMain.handle('collections:by-principal-tag', (_e, tagId: number) =>
     collections.searchCollectionsByPrincipalTag(tagId)

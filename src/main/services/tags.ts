@@ -379,7 +379,7 @@ export function getSoftSuggestions(sourceId: number): Tag[] {
   return rows
 }
 
-export function getHardLinked(sourceId: number): number[] {
+export function getHardLinkedTagIds(sourceId: number): number[] {
   return (
     getDb()
       .prepare(
@@ -646,7 +646,7 @@ export function applyTag(
 ): { applied: number[]; soft: Tag[] } {
   const db = getDb()
   const groupId = subjectId ?? ensureUniversalSubject(mediaId)
-  const toApply = [tagId, ...getHardLinked(tagId)]
+  const toApply = [tagId, ...getHardLinkedTagIds(tagId)]
   const applied: number[] = []
 
   for (const tid of toApply) {

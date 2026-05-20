@@ -132,6 +132,10 @@ const api = {
     principalTags: (id: number) => ipcRenderer.invoke('collections:principal-tags', id),
     setPrincipalTags: (id: number, tagIds: number[]) =>
       ipcRenderer.invoke('collections:set-principal-tags', id, tagIds),
+    addPrincipalTag: (id: number, tagId: number) =>
+      ipcRenderer.invoke('collections:add-principal-tag', id, tagId) as Promise<Tag[]>,
+    principalTagSuggestions: (id: number) =>
+      ipcRenderer.invoke('collections:principal-tag-suggestions', id) as Promise<Tag[]>,
     search: (q: string) => ipcRenderer.invoke('collections:search', q),
     byPrincipalTag: (tagId: number) => ipcRenderer.invoke('collections:by-principal-tag', tagId),
     reorder: (orderedIds: number[]) => ipcRenderer.invoke('collections:reorder', orderedIds),
