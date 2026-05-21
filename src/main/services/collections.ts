@@ -1,5 +1,12 @@
 import { getDb } from '../db/database'
-import type { Collection, CollectionMember, CollectionWithStats, MediaItem, Tag } from '../../shared/types'
+import type {
+  Collection,
+  CollectionExternalLink,
+  CollectionMember,
+  CollectionWithStats,
+  MediaItem,
+  Tag
+} from '../../shared/types'
 import { enrichMedia } from './mediaPaths'
 import { getHardLinkedTagIds, getSoftSuggestions } from './tags'
 
@@ -193,6 +200,44 @@ export function moveCollection(id: number, direction: 'up' | 'down'): void {
     db.prepare(`UPDATE collections SET sort_order = ? WHERE id = ?`).run(a.sort_order, b.id)
   })
   move()
+}
+
+export function listExternalLinks(collectionId: number): CollectionExternalLink[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM collection_external_links WHERE collection_id = ? ORDER BY label COLLATE NOCASE`
+    )
+    .all(collectionId) as CollectionExternalLink[]
+}
+
+export function addExternalLink(
+  collectionId: number,
+  label: string,
+  url: string
+): CollectionExternalLink {
+  const r = getDb()
+    .prepare(`INSERT INTO collection_external_links (collection_id, label, url) VALUES (?, ?, ?)`)
+    .run(collectionId, label.trim(), url.trim())
+  return getDb()
+    .prepare(`SELECT * FROM collection_external_links WHERE id = ?`)
+    .get(r.lastInsertRowid) as CollectionExternalLink
+}
+
+export function updateExternalLink(
+  id: number,
+  label: string,
+  url: string
+): CollectionExternalLink {
+  getDb()
+    .prepare(`UPDATE collection_external_links SET label = ?, url = ? WHERE id = ?`)
+    .run(label.trim(), url.trim(), id)
+  return getDb()
+    .prepare(`SELECT * FROM collection_external_links WHERE id = ?`)
+    .get(id) as CollectionExternalLink
+}
+
+export function removeExternalLink(id: number): void {
+  getDb().prepare(`DELETE FROM collection_external_links WHERE id = ?`).run(id)
 }
 
 export function searchCollectionsFts(query: string): Collection[] {

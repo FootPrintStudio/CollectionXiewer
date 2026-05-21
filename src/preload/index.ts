@@ -7,7 +7,8 @@ import type {
   MediaSortOrder,
   MediaTagSuggestion,
   Tag,
-  TagGroup
+  TagGroup,
+  CollectionExternalLink
 } from '../shared/types'
 import type { SearchNode } from '../shared/searchAst'
 import type { BoardDocument, BoardSummary } from '../shared/boardSchema'
@@ -140,7 +141,14 @@ const api = {
     byPrincipalTag: (tagId: number) => ipcRenderer.invoke('collections:by-principal-tag', tagId),
     reorder: (orderedIds: number[]) => ipcRenderer.invoke('collections:reorder', orderedIds),
     move: (id: number, direction: 'up' | 'down') =>
-      ipcRenderer.invoke('collections:move', id, direction)
+      ipcRenderer.invoke('collections:move', id, direction),
+    externalLinks: (id: number) =>
+      ipcRenderer.invoke('collections:external-links', id) as Promise<CollectionExternalLink[]>,
+    addExternalLink: (collectionId: number, label: string, url: string) =>
+      ipcRenderer.invoke('collections:add-external-link', collectionId, label, url),
+    updateExternalLink: (id: number, label: string, url: string) =>
+      ipcRenderer.invoke('collections:update-external-link', id, label, url),
+    removeExternalLink: (id: number) => ipcRenderer.invoke('collections:remove-external-link', id)
   },
   crop: {
     get: (mediaId: number) => ipcRenderer.invoke('crop:get', mediaId),

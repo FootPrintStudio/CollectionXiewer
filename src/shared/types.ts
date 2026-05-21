@@ -71,6 +71,13 @@ export interface TagExternalLink {
   url: string
 }
 
+export interface CollectionExternalLink {
+  id: number
+  collection_id: number
+  label: string
+  url: string
+}
+
 export interface Subject {
   id: number
   media_id: number

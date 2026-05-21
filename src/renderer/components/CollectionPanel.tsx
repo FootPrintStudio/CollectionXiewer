@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Collection, Tag } from '../../shared/types'
+import type { Collection, CollectionExternalLink, Tag } from '../../shared/types'
 import { useAppStore } from '../store/appStore'
 import { WikiEditor } from './WikiEditor'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { CollectionPrincipalTagsSection } from './CollectionPrincipalTagsSection'
+import { CollectionExternalLinksSection } from './CollectionExternalLinksSection'
 
 interface Props {
   collectionId: number
@@ -12,6 +13,7 @@ interface Props {
 export function CollectionPanel({ collectionId }: Props) {
   const [collection, setCollection] = useState<Collection | null>(null)
   const [principal, setPrincipal] = useState<Tag[]>([])
+  const [links, setLinks] = useState<CollectionExternalLink[]>([])
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const selectTag = useAppStore((s) => s.selectTag)
@@ -25,6 +27,7 @@ export function CollectionPanel({ collectionId }: Props) {
   const load = useCallback(async () => {
     setCollection((await window.collectionXiewer.collections.get(collectionId)) ?? null)
     setPrincipal(await window.collectionXiewer.collections.principalTags(collectionId))
+    setLinks(await window.collectionXiewer.collections.externalLinks(collectionId))
   }, [collectionId])
 
   useEffect(() => {
@@ -82,6 +85,12 @@ export function CollectionPanel({ collectionId }: Props) {
         onSelectTag={selectTag}
         onChanged={() => bumpCollectionDetailsRevision()}
         onSearchTags={onSearchTags}
+      />
+
+      <CollectionExternalLinksSection
+        collection={collection}
+        links={links}
+        onLinksChange={setLinks}
       />
 
       <WikiEditor entityType="collection" entityId={collectionId} />

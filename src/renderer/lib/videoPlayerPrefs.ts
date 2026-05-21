@@ -1,5 +1,6 @@
 const VOLUME_KEY = 'collectionXiewer.videoVolume'
 const MUTED_KEY = 'collectionXiewer.videoMuted'
+const LOOP_KEY = 'collectionXiewer.videoLoop'
 
 export function loadVideoVolume(): number {
   try {
@@ -32,6 +33,22 @@ export function loadVideoMuted(): boolean {
 export function saveVideoMuted(muted: boolean): void {
   try {
     localStorage.setItem(MUTED_KEY, muted ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadVideoLoop(): boolean {
+  try {
+    return localStorage.getItem(LOOP_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function saveVideoLoop(loop: boolean): void {
+  try {
+    localStorage.setItem(LOOP_KEY, loop ? '1' : '0')
   } catch {
     /* ignore */
   }

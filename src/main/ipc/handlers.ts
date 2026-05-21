@@ -244,6 +244,18 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('collections:move', (_e, id: number, direction: 'up' | 'down') => {
     collections.moveCollection(id, direction)
   })
+  ipcMain.handle('collections:external-links', (_e, id: number) =>
+    collections.listExternalLinks(id)
+  )
+  ipcMain.handle('collections:add-external-link', (_e, collectionId: number, label: string, url: string) =>
+    collections.addExternalLink(collectionId, label, url)
+  )
+  ipcMain.handle('collections:update-external-link', (_e, id: number, label: string, url: string) =>
+    collections.updateExternalLink(id, label, url)
+  )
+  ipcMain.handle('collections:remove-external-link', (_e, id: number) =>
+    collections.removeExternalLink(id)
+  )
 
   ipcMain.handle('crop:get', (_e, mediaId: number) => crop.getCrop(mediaId))
   ipcMain.handle('crop:set', (_e, mediaId: number, rect: CropRect) => crop.setCrop(mediaId, rect))

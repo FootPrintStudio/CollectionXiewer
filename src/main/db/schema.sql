@@ -122,6 +122,13 @@ CREATE TABLE IF NOT EXISTS collection_principal_tags (
   PRIMARY KEY (collection_id, tag_id)
 );
 
+CREATE TABLE IF NOT EXISTS collection_external_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  url TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS wiki_pages (
   entity_type TEXT NOT NULL CHECK(entity_type IN ('tag', 'media', 'collection')),
   entity_id INTEGER NOT NULL,

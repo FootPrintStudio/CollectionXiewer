@@ -4,6 +4,7 @@ import {
   Minimize,
   Pause,
   Play,
+  Repeat,
   SkipBack,
   SkipForward,
   Volume2,
@@ -12,8 +13,10 @@ import {
 import { mediaUrlFromPath } from '../lib/fileUrl'
 import { isEditableTarget } from '../lib/keyboardTargets'
 import {
+  loadVideoLoop,
   loadVideoMuted,
   loadVideoVolume,
+  saveVideoLoop,
   saveVideoMuted,
   saveVideoVolume
 } from '../lib/videoPlayerPrefs'
@@ -61,6 +64,7 @@ export function VideoPreviewPlayer({
   const [savingPoster, setSavingPoster] = useState(false)
   const [volume, setVolume] = useState(loadVideoVolume)
   const [muted, setMuted] = useState(loadVideoMuted)
+  const [loop, setLoop] = useState(loadVideoLoop)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
 
@@ -89,7 +93,8 @@ export function VideoPreviewPlayer({
     if (!v) return
     v.volume = volume
     v.muted = muted
-  }, [volume, muted, src])
+    v.loop = loop
+  }, [volume, muted, loop, src])
 
   useEffect(() => {
     const onFs = () => {
@@ -200,6 +205,15 @@ export function VideoPreviewPlayer({
     setMuted((m) => {
       const next = !m
       saveVideoMuted(next)
+      return next
+    })
+    revealControls()
+  }, [revealControls])
+
+  const toggleLoop = useCallback(() => {
+    setLoop((l) => {
+      const next = !l
+      saveVideoLoop(next)
       return next
     })
     revealControls()
@@ -342,6 +356,7 @@ export function VideoPreviewPlayer({
           poster={posterUrl ?? undefined}
           preload="metadata"
           playsInline
+          loop={loop}
           onLoadedMetadata={() => {
             const v = videoRef.current
             if (v) {
@@ -374,6 +389,14 @@ export function VideoPreviewPlayer({
           }}
           onPause={() => setPlaying(false)}
           onEnded={() => {
+            if (loop) {
+              const v = videoRef.current
+              if (v) {
+                v.currentTime = 0
+                void v.play()
+              }
+              return
+            }
             setPlaying(false)
             setControlsVisible(true)
             onEnded?.()
@@ -486,6 +509,18 @@ export function VideoPreviewPlayer({
               aria-label="Volume"
             />
           </div>
+
+          <button
+            type="button"
+            className={`video-preview-player__loop${loop ? ' video-preview-player__loop--on' : ''}`}
+            title={loop ? 'Loop on (click to turn off)' : 'Loop off (click to loop)'}
+            aria-label={loop ? 'Disable loop' : 'Enable loop'}
+            aria-pressed={loop}
+            onClick={toggleLoop}
+          >
+            <Repeat size={16} aria-hidden />
+            <span className="video-preview-player__loop-label">Loop</span>
+          </button>
 
           <button
             type="button"

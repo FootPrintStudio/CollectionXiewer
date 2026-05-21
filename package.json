@@ -1,6 +1,6 @@
 {
   "name": "collection-xiewer",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Local-first media browser with rich tagging for art/reference archives",
   "main": "./out/main/index.js",
   "scripts": {
