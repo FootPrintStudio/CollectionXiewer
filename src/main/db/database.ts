@@ -247,7 +247,27 @@ function migrate(database: Database.Database): void {
     CREATE VIRTUAL TABLE IF NOT EXISTS media_wiki_fts USING fts5(body_md);
   `)
 
-  rebuildFts(database)
+  if (shouldRebuildFts(database)) {
+    rebuildFts(database)
+    database
+      .prepare(
+        `INSERT INTO app_prefs (key, value) VALUES ('fts_dirty', '0')
+         ON CONFLICT(key) DO UPDATE SET value = '0'`
+      )
+      .run()
+  }
+}
+
+function shouldRebuildFts(database: Database.Database): boolean {
+  if (!tableExists(database, 'app_prefs')) return true
+  const dirty = database.prepare(`SELECT value FROM app_prefs WHERE key = 'fts_dirty'`).get() as
+    | { value: string }
+    | undefined
+  if (dirty?.value === '1') return true
+  if (!tableExists(database, 'tags') || !tableExists(database, 'tags_fts')) return false
+  const tagCount = (database.prepare(`SELECT COUNT(*) AS c FROM tags`).get() as { c: number }).c
+  const ftsCount = (database.prepare(`SELECT COUNT(*) AS c FROM tags_fts`).get() as { c: number }).c
+  return tagCount > 0 && ftsCount === 0
 }
 
 export function rebuildFts(database: Database.Database = getDb()): void {

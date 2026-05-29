@@ -32,7 +32,11 @@ export function BoardToolbar({
   const createGroupFromSelection = useBoardStore((s) => s.createGroupFromSelection)
   const ungroupSelection = useBoardStore((s) => s.ungroupSelection)
   const undo = useBoardStore((s) => s.undo)
+  const redo = useBoardStore((s) => s.redo)
   const undoStack = useBoardStore((s) => s.undoStack)
+  const redoStack = useBoardStore((s) => s.redoStack)
+  const saveError = useBoardStore((s) => s.saveError)
+  const saveNow = useBoardStore((s) => s.saveNow)
   const focusAllItems = useBoardStore((s) => s.focusAllItems)
   const updateItem = useBoardStore((s) => s.updateItem)
   const addMediaItems = useBoardStore((s) => s.addMediaItems)
@@ -47,6 +51,7 @@ export function BoardToolbar({
   const canNormalize = selectedMediaCount >= 2 && anchorItem?.kind === 'media'
   const canUngroup = selectedItems.some((i) => i.groupId != null)
   const canUndo = undoStack.length > 0
+  const canRedo = redoStack.length > 0
   const canFocus = (document?.items.length ?? 0) > 0
   const [alignChoice, setAlignChoice] = useState('')
   const [layerChoice, setLayerChoice] = useState('')
@@ -117,7 +122,20 @@ export function BoardToolbar({
         </button>
         <span className="board-toolbar__title">{document?.name ?? 'Board'}</span>
         <span className="board-toolbar__status">
-          {saving ? 'Saving…' : dirty ? 'Unsaved' : 'Saved'}
+          {saveError ? (
+            <>
+              Save failed —{' '}
+              <button type="button" className="board-toolbar__retry" onClick={() => void saveNow()}>
+                Retry
+              </button>
+            </>
+          ) : saving ? (
+            'Saving…'
+          ) : dirty ? (
+            'Unsaved'
+          ) : (
+            'Saved'
+          )}
         </span>
         <span className="board-toolbar__spacer" aria-hidden />
         <div className="board-toolbar__tools" role="group" aria-label="Canvas tools">
@@ -151,6 +169,14 @@ export function BoardToolbar({
             onClick={() => undo()}
           >
             Undo
+          </button>
+          <button
+            type="button"
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+            onClick={() => redo()}
+          >
+            Redo
           </button>
           <button
             type="button"

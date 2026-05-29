@@ -74,6 +74,26 @@ function GalleryArea({
   )
 }
 
+function GalleryLoadMoreFooter() {
+  const mediaHasMore = useAppStore((s) => s.mediaHasMore)
+  const mediaLoadingMore = useAppStore((s) => s.mediaLoadingMore)
+  const loadMoreMedia = useAppStore((s) => s.loadMoreMedia)
+
+  if (!mediaHasMore && !mediaLoadingMore) return null
+
+  return (
+    <div className="gallery-load-more">
+      {mediaLoadingMore ? (
+        <span className="gallery-load-more__hint">Loading more…</span>
+      ) : (
+        <button type="button" className="gallery-load-more__btn" onClick={() => void loadMoreMedia()}>
+          Load more
+        </button>
+      )}
+    </div>
+  )
+}
+
 type ThumbHandlers = {
   onThumbClick: (id: number, e: React.MouseEvent) => void
   onThumbDoubleClick: (id: number) => void
@@ -160,6 +180,9 @@ function chunkMediaRows(items: MediaItem[], columnCount: number): MediaItem[][] 
 
 export function GalleryView() {
   const media = useAppStore((s) => s.media)
+  const mediaHasMore = useAppStore((s) => s.mediaHasMore)
+  const mediaLoadingMore = useAppStore((s) => s.mediaLoadingMore)
+  const loadMoreMedia = useAppStore((s) => s.loadMoreMedia)
   const galleryMode = useAppStore((s) => s.galleryMode)
   const gridSize = useAppStore((s) => s.gridSize)
   const selectedMediaId = useAppStore((s) => s.selectedMediaId)
@@ -195,6 +218,19 @@ export function GalleryView() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [clearMediaSelection])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      if (!mediaHasMore || mediaLoadingMore) return
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 480) {
+        void loadMoreMedia()
+      }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [mediaHasMore, mediaLoadingMore, loadMoreMedia, media.length, galleryMode])
 
   const onThumbClick = (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -326,6 +362,7 @@ export function GalleryView() {
             )
           })}
         </div>
+        <GalleryLoadMoreFooter />
       </GalleryArea>
     )
   }
@@ -344,6 +381,7 @@ export function GalleryView() {
             />
           ))}
         </div>
+        <GalleryLoadMoreFooter />
       </GalleryArea>
     )
   }
@@ -384,6 +422,7 @@ export function GalleryView() {
           )
         })}
       </div>
+      <GalleryLoadMoreFooter />
     </GalleryArea>
   )
 }

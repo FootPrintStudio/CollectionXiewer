@@ -11,6 +11,7 @@ import { installMediaProtocolHandler, registerMediaScheme } from './protocol/med
 import { stopAllWatchers } from './services/watcher'
 import { initWatchers } from './services/roots'
 import { rebuildAllClosure } from './services/tags'
+import { ensureTagClosureCurrent } from './services/appPrefs'
 
 registerMediaScheme()
 
@@ -56,7 +57,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   installMediaProtocolHandler()
   getDb()
-  rebuildAllClosure()
+  ensureTagClosureCurrent(rebuildAllClosure)
   registerIpcHandlers()
   initUpdater()
   initWatchers()

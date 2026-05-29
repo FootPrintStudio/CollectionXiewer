@@ -100,10 +100,6 @@ export function TagConnectionsSection({
     onConnectionsChange(connections.filter((c) => c.id !== id))
   }
 
-  const refresh = async () => {
-    onConnectionsChange(await window.collectionXiewer.tags.connections(sourceTag.id))
-  }
-
   return (
     <section className="tag-connections-section" aria-label="Tag connections">
       <div className="tag-connections-section__header">
@@ -150,7 +146,7 @@ export function TagConnectionsSection({
           sourceTag={sourceTag}
           existing={connections}
           onClose={() => setShowAddModal(false)}
-          onAdded={() => void refresh()}
+          onAdded={(connection) => onConnectionsChange([...connections, connection])}
         />
       ) : null}
     </section>

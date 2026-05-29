@@ -29,6 +29,7 @@ export function BoardCanvas() {
   const setViewportSize = useBoardStore((s) => s.setViewportSize)
   const pushUndoSnapshot = useBoardStore((s) => s.pushUndoSnapshot)
   const undo = useBoardStore((s) => s.undo)
+  const redo = useBoardStore((s) => s.redo)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const [spaceHeld, setSpaceHeld] = useState(false)
@@ -70,6 +71,14 @@ export function BoardCanvas() {
         e.preventDefault()
         undo()
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault()
+        redo()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault()
+        redo()
+      }
     }
     const up = (e: KeyboardEvent) => {
       if (e.code === 'Space') setSpaceHeld(false)
@@ -80,7 +89,7 @@ export function BoardCanvas() {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [undo])
+  }, [undo, redo])
 
   useEffect(() => {
     const el = viewportRef.current

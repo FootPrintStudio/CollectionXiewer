@@ -298,7 +298,6 @@ textarea {
 /* Modals & menus */
 .modal-backdrop {
   background-color: rgb(0 0 0 / 0.86);
-  backdrop-filter: contrast(1.02);
 }
 
 .modal-dialog {

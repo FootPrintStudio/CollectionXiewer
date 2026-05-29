@@ -1,4 +1,5 @@
 import { getDb } from '../db/database'
+import { bumpTagGraphEpoch, syncTagClosureEpoch } from './appPrefs'
 import type { Tag, TagConnection, TagExternalLink, MediaTag, MediaTagSuggestion } from '../../shared/types'
 import { canAssignTagToGroup, canReparentTag, getTagSiblings, isDescendantOf } from '../../shared/tagTree'
 import { formatTagLabel, slugifyTag } from '../../shared/tagDisplay'
@@ -175,6 +176,7 @@ export function setTagParent(tagId: number, newParentId: number | null): Tag {
     .prepare(`UPDATE tags SET parent_id = ?, tag_group_id = ?, sort_order = ? WHERE id = ?`)
     .run(newParentId, tag_group_id, sortOrder, tagId)
   applyTagGroupToSubtree(tagId, tag_group_id)
+  bumpTagGraphEpoch()
   rebuildAllClosure()
   syncTagFts(tagId)
   return getTag(tagId)!
@@ -193,6 +195,7 @@ export function assignTagToGroup(tagId: number, tagGroupId: number | null): Tag 
     db.prepare(`UPDATE tags SET parent_id = NULL, sort_order = ? WHERE id = ?`).run(sortOrder, tagId)
   })
   move()
+  bumpTagGraphEpoch()
   rebuildAllClosure()
   syncTagFts(tagId)
   return getTag(tagId)!
@@ -297,6 +300,7 @@ export function rebuildClosureForTag(tagId: number): void {
     }
   }
   walk(tagId, 0)
+  bumpTagGraphEpoch()
   rebuildAllClosure()
 }
 
@@ -323,6 +327,7 @@ export function rebuildAllClosure(): void {
       }
     }
   }
+  syncTagClosureEpoch()
 }
 
 export function addConnection(
@@ -766,10 +771,16 @@ export function removeTag(id: number): void {
   })
   tx()
 
+  bumpTagGraphEpoch()
   rebuildAllClosure()
 
-  for (const { media_id, subject_id } of refreshKeys.values()) {
-    refreshSubjectSuggestions(media_id, subject_id)
+  if (refreshKeys.size > 0) {
+    const refresh = db.transaction(() => {
+      for (const { media_id, subject_id } of refreshKeys.values()) {
+        refreshSubjectSuggestions(media_id, subject_id)
+      }
+    })
+    refresh()
   }
 }
 

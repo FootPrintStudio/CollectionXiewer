@@ -78,7 +78,11 @@ export function AddTagConnectionModal({
         ? await window.collectionXiewer.tags.search(q)
         : await window.collectionXiewer.tags.list()
       if (cancelled) return
-      const filtered = matches.filter((t: Tag) => !excludedIds.has(t.id))
+      const filtered = matches.filter((t: Tag) => {
+        if (excludedIds.has(t.id)) return false
+        if (existing.some((c) => c.target_tag_id === t.id && c.kind === kind)) return false
+        return true
+      })
       setResults(filtered.slice(0, 40))
       if (selectedId != null && !filtered.some((t) => t.id === selectedId)) {
         setSelectedId(null)
@@ -87,7 +91,7 @@ export function AddTagConnectionModal({
     return () => {
       cancelled = true
     }
-  }, [query, sourceTag.id, existing.length, selectedId])
+  }, [query, sourceTag.id, existing, kind, selectedId])
 
   const submit = async () => {
     if (selectedId == null) {
@@ -108,7 +112,10 @@ export function AddTagConnectionModal({
         kind
       )
       onAdded(connection)
-      onClose()
+      setSelectedId(null)
+      setQuery('')
+      setError(null)
+      searchRef.current?.focus()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add connection.')
     } finally {
@@ -192,7 +199,7 @@ export function AddTagConnectionModal({
 
         <div className="modal-actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            Done
           </button>
           <button type="button" className="primary" disabled={saving} onClick={() => void submit()}>
             {saving ? 'Adding…' : 'Add connection'}

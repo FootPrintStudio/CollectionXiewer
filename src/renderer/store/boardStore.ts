@@ -6,6 +6,7 @@ import { captureUndoSnapshot, pushUndoStack, type BoardUndoSnapshot } from '../l
 import { moveSelectionInStack } from '../lib/boardZOrder'
 import { normalizeMediaToHeight, normalizeMediaToWidth } from '../lib/boardItemTransforms'
 import { mediaAspectRatio } from '../../shared/mediaDimensions'
+import { showError } from './toastStore'
 
 const api = () => window.collectionXiewer.boards
 
@@ -28,11 +29,14 @@ interface BoardState {
   mediaMissing: Set<number>
   dropWorldAt: { x: number; y: number } | null
   undoStack: BoardUndoSnapshot[]
+  redoStack: BoardUndoSnapshot[]
+  saveError: string | null
   viewportSize: { width: number; height: number } | null
   setDropWorldAt: (at: { x: number; y: number } | null) => void
   setViewportSize: (width: number, height: number) => void
   pushUndoSnapshot: () => void
   undo: () => void
+  redo: () => void
   focusAllItems: () => void
   setBoardsRoot: (path: string | null) => Promise<void>
   refreshSummaries: () => Promise<void>
@@ -101,6 +105,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   mediaMissing: new Set(),
   dropWorldAt: null,
   undoStack: [],
+  redoStack: [],
+  saveError: null,
   viewportSize: null,
 
   setDropWorldAt: (at) => set({ dropWorldAt: at }),
@@ -115,13 +121,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (undoRestoreActive) return
     const doc = get().document
     if (!doc) return
-    set({ undoStack: pushUndoStack(get().undoStack, captureUndoSnapshot(doc)) })
+    set({ undoStack: pushUndoStack(get().undoStack, captureUndoSnapshot(doc)), redoStack: [] })
   },
 
   undo: () => {
-    const { undoStack, document, selection, selectionAnchorId } = get()
+    const { undoStack, redoStack, document, selection, selectionAnchorId } = get()
     if (!document || undoStack.length === 0) return
     const snapshot = undoStack[undoStack.length - 1]!
+    const current = captureUndoSnapshot(document)
     const itemIds = new Set(snapshot.items.map((i) => i.id))
     const nextSelection = selection.filter((id) => itemIds.has(id))
     const nextAnchor =
@@ -131,6 +138,31 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     undoRestoreActive = true
     set({
       undoStack: undoStack.slice(0, -1),
+      redoStack: pushUndoStack(redoStack, current),
+      document: { ...document, items: snapshot.items, groups: snapshot.groups },
+      selection: nextSelection,
+      selectionAnchorId: nextAnchor,
+      dirty: true
+    })
+    undoRestoreActive = false
+    get().queueSave()
+  },
+
+  redo: () => {
+    const { redoStack, undoStack, document, selection, selectionAnchorId } = get()
+    if (!document || redoStack.length === 0) return
+    const snapshot = redoStack[redoStack.length - 1]!
+    const current = captureUndoSnapshot(document)
+    const itemIds = new Set(snapshot.items.map((i) => i.id))
+    const nextSelection = selection.filter((id) => itemIds.has(id))
+    const nextAnchor =
+      selectionAnchorId && itemIds.has(selectionAnchorId)
+        ? selectionAnchorId
+        : (nextSelection[0] ?? null)
+    undoRestoreActive = true
+    set({
+      redoStack: redoStack.slice(0, -1),
+      undoStack: pushUndoStack(undoStack, current),
       document: { ...document, items: snapshot.items, groups: snapshot.groups },
       selection: nextSelection,
       selectionAnchorId: nextAnchor,
@@ -172,7 +204,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       selectionAnchorId: null,
       dirty: false,
       tool: 'select',
-      undoStack: []
+      undoStack: [],
+      redoStack: [],
+      saveError: null
     })
     await get().checkMediaRefs()
   },
@@ -185,6 +219,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       selectionAnchorId: null,
       dirty: false,
       undoStack: [],
+      redoStack: [],
+      saveError: null,
       viewportSize: null
     })
   },
@@ -508,10 +544,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   saveNow: async () => {
     const { activeFile, document, dirty } = get()
     if (!activeFile || !document || !dirty) return
-    set({ saving: true })
+    set({ saving: true, saveError: null })
     try {
       const saved = await api().write(activeFile, document)
-      set({ document: saved, dirty: false })
+      set({ document: saved, dirty: false, saveError: null })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to save board.'
+      set({ saveError: message })
+      showError(message)
     } finally {
       set({ saving: false })
     }

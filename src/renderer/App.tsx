@@ -21,9 +21,14 @@ import { GalleryToolbarControls } from './components/GalleryToolbarControls'
 import { BulkTagBar } from './components/BulkTagBar'
 import { SlideshowOverlay } from './components/SlideshowOverlay'
 import { SettingsMenu } from './components/SettingsMenu'
+import { VideoToolsBanner } from './components/VideoToolsBanner'
+import { ToastContainer } from './ui/ToastContainer'
+import { InitFailureScreen } from './ui/InitFailureScreen'
 
 export function App() {
   const init = useAppStore((s) => s.init)
+  const initLoading = useAppStore((s) => s.initLoading)
+  const initError = useAppStore((s) => s.initError)
   const galleryMode = useAppStore((s) => s.galleryMode)
   const setGalleryMode = useAppStore((s) => s.setGalleryMode)
   const gridSize = useAppStore((s) => s.gridSize)
@@ -57,8 +62,21 @@ export function App() {
     void refreshMedia()
   }, [searchAst, searchQueryText, selectedCollectionId, refreshMedia])
 
+  if (initError) {
+    return <InitFailureScreen message={initError} onRetry={() => void init()} />
+  }
+
+  if (initLoading) {
+    return (
+      <div className="fatal-screen fatal-screen--loading">
+        <p>Loading library…</p>
+      </div>
+    )
+  }
+
   return (
     <TagDndProvider>
+      <ToastContainer />
       <SlideshowOverlay />
       <div className="app-shell">
       <div
@@ -95,6 +113,7 @@ export function App() {
           </div>
         </div>
         <div className="content-area">
+          <VideoToolsBanner />
           <BulkTagBar />
           {mainView === 'gallery' && <GalleryView />}
           {mainView === 'preview' && <MediaPreviewer />}

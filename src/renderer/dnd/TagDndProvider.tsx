@@ -40,6 +40,7 @@ import {
 } from './tagDnd'
 import { isBoardDropId } from './boardDnd'
 import { useBoardStore } from '../store/boardStore'
+import { showError } from '../store/toastStore'
 
 type ReparentTarget =
   | { kind: 'parent'; parentId: number | null }
@@ -172,7 +173,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
         await refreshCollections()
         if (selectedCollectionId === collectionId) await refreshMedia()
       } catch (e) {
-        console.error(e)
+        showError(e)
       }
       return
     }
@@ -192,7 +193,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
             dropTarget.subjectId
           )
         } catch (e) {
-          console.error(e)
+          showError(e)
         }
       }
       return
@@ -216,7 +217,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
         await addPrincipalTagToCollection(collectionPrincipalId, draggedId)
         bumpCollectionDetailsRevision()
       } catch (e) {
-        console.error(e)
+        showError(e)
       }
       return
     }
@@ -226,7 +227,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
       try {
         await applyTagFromLibraryDrop(draggedId, dropTarget)
       } catch (e) {
-        console.error(e)
+        showError(e)
       }
       return
     }
@@ -251,7 +252,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
       }
       await refreshTags()
     } catch (e) {
-      console.error(e)
+      showError(e)
     }
   }
 

@@ -3,6 +3,13 @@ import type { WatchRoot } from '../../shared/types'
 import { scanRoot, startWatching, stopWatching } from './watcher'
 import { canonicalWatchRootPath } from './rootPaths'
 
+export class DuplicateWatchRootError extends Error {
+  constructor(path: string) {
+    super(`This folder is already watched: ${path}`)
+    this.name = 'DuplicateWatchRootError'
+  }
+}
+
 function persistCanonicalPath(id: number, path: string): WatchRoot {
   const db = getDb()
   const canonical = canonicalWatchRootPath(path)
@@ -25,6 +32,10 @@ export function listRoots(): WatchRoot[] {
 
 export function addRoot(path: string): WatchRoot {
   const canonical = canonicalWatchRootPath(path)
+  const existing = getDb()
+    .prepare(`SELECT id FROM watch_roots WHERE path = ?`)
+    .get(canonical) as { id: number } | undefined
+  if (existing) throw new DuplicateWatchRootError(canonical)
   const r = getDb()
     .prepare(`INSERT INTO watch_roots (path, enabled, last_scan_at) VALUES (?, 1, NULL)`)
     .run(canonical)

@@ -1,15 +1,13 @@
-name: Release
+name: CI
 
 on:
   push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: write
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  release-linux:
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,8 +27,3 @@ jobs:
 
       - name: Test
         run: npm test
-
-      - name: Build and publish AppImage
-        run: npm run dist:publish
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

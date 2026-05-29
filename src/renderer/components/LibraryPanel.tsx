@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/appStore'
+import { showError } from '../store/toastStore'
 import { useTagDnd } from '../dnd/TagDndContext'
 import { TagTreeView } from './TagTreeView'
 import { WatchRootTreeView } from './WatchRootTreeView'
@@ -26,10 +27,13 @@ export function LibraryPanel() {
 
   const addRoot = async () => {
     const path = await window.collectionXiewer.roots.pickFolder()
-    if (path) {
+    if (!path) return
+    try {
       await window.collectionXiewer.roots.add(path)
       await refreshRoots()
       await refreshMedia()
+    } catch (e) {
+      showError(e)
     }
   }
 

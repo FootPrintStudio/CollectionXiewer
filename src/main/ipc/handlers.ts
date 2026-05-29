@@ -16,7 +16,8 @@ import * as identifierMatch from '../services/identifierMatch'
 import * as fsOps from '../services/fsOps'
 import * as boards from '../services/boards'
 import type { BoardDocument } from '../../shared/boardSchema'
-import { getDb } from '../db/database'
+import { getDb, getDbPath } from '../db/database'
+import { backupDatabase, getDataDir, openDataFolder } from '../services/dbBackup'
 import { exportCropped } from '../services/crop'
 import { indexFile } from '../services/indexer'
 import {
@@ -358,5 +359,20 @@ export function registerIpcHandlers(): void {
   })
   ipcMain.handle('updater:open-releases', () => {
     void shell.openExternal(GITHUB_RELEASES_URL)
+  })
+
+  ipcMain.handle('db:get-path', () => getDbPath())
+  ipcMain.handle('db:get-data-dir', () => getDataDir())
+  ipcMain.handle('db:open-data-folder', () => {
+    openDataFolder()
+  })
+  ipcMain.handle('db:backup', async () => {
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: `library-backup-${new Date().toISOString().slice(0, 10)}.db`,
+      filters: [{ name: 'SQLite database', extensions: ['db'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    backupDatabase(result.filePath)
+    return result.filePath
   })
 }

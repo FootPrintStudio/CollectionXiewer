@@ -6,6 +6,7 @@ import { useAppStore } from '../store/appStore'
 import { SettingsIdentifiersPanel } from './SettingsIdentifiersPanel'
 import { IdentifierEditorModal } from './IdentifierEditorModal'
 import { UpdateDialog } from './UpdateDialog'
+import { showToast } from '../store/toastStore'
 
 export function SettingsMenu() {
   const showThumbTagList = useAppStore((s) => s.showThumbTagList)
@@ -18,6 +19,7 @@ export function SettingsMenu() {
   const [videoToolsOk, setVideoToolsOk] = useState<boolean | null>(null)
   const [updateOpen, setUpdateOpen] = useState(false)
   const [updatePending, setUpdatePending] = useState(false)
+  const [backupBusy, setBackupBusy] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -142,6 +144,35 @@ export function SettingsMenu() {
               </p>
             ) : null}
             <SettingsIdentifiersPanel onOpenEditor={openIdentifierEditor} />
+            <h2 className="settings-menu__panel-title">Data</h2>
+            <button
+              type="button"
+              className="settings-menu__link-btn"
+              disabled={backupBusy}
+              onClick={() => {
+                void (async () => {
+                  setBackupBusy(true)
+                  try {
+                    const path = await window.collectionXiewer.db.backup()
+                    if (path) showToast(`Library backed up to ${path}`, 'success')
+                  } finally {
+                    setBackupBusy(false)
+                  }
+                })()
+              }}
+            >
+              {backupBusy ? 'Backing up…' : 'Backup library now…'}
+            </button>
+            <button
+              type="button"
+              className="settings-menu__link-btn"
+              onClick={() => void window.collectionXiewer.db.openDataFolder()}
+            >
+              Open data folder
+            </button>
+            <p className="settings-menu__toggle-hint">
+              SQLite database: ~/.config/CollectionXiewer/library.db
+            </p>
           </div>
         ) : null}
       </div>

@@ -114,52 +114,27 @@
   --scrollbar-thumb-hover: color-mix(in srgb, var(--color-accent-hover) 55%, var(--color-surface-raised));
   --scrollbar-thumb-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.1);
 
-  /* Atmosphere — carrier hum, static & starfield grain */
-  --vault-grain-opacity: 0.072;
-  --vault-grain-blend: screen;
+  /* Atmosphere — static layers (animations disabled for GPU cost) */
+  --vault-grain-opacity: 0.05;
+  --vault-grain-blend: normal;
   --vault-starfield:
-    radial-gradient(1px 1px at 12% 18%, hsl(var(--vault-tint-hue) 25% 92% / 0.28), transparent),
-    radial-gradient(1px 1px at 28% 64%, hsl(var(--vault-tint-hue) 20% 90% / 0.2), transparent),
-    radial-gradient(1.2px 1.2px at 44% 32%, hsl(var(--vault-tint-hue) 30% 95% / 0.32), transparent),
-    radial-gradient(1px 1px at 58% 78%, hsl(var(--vault-tint-hue) 18% 88% / 0.18), transparent),
-    radial-gradient(1px 1px at 72% 24%, hsl(var(--vault-tint-hue) 22% 92% / 0.24), transparent),
-    radial-gradient(0.8px 0.8px at 86% 56%, hsl(var(--vault-tint-hue) 15% 85% / 0.16), transparent),
-    radial-gradient(1px 1px at 6% 48%, hsl(var(--vault-tint-hue) 20% 90% / 0.14), transparent),
-    radial-gradient(1px 1px at 36% 8%, hsl(var(--vault-tint-hue) 25% 93% / 0.22), transparent),
-    radial-gradient(1px 1px at 64% 52%, hsl(var(--vault-tint-hue) 18% 87% / 0.12), transparent),
-    radial-gradient(1.5px 1.5px at 92% 12%, hsl(var(--vault-tint-hue) 28% 96% / 0.26), transparent),
-    radial-gradient(1px 1px at 18% 88%, hsl(var(--vault-tint-hue) 16% 86% / 0.1), transparent),
-    radial-gradient(1px 1px at 52% 92%, hsl(var(--vault-tint-hue) 20% 89% / 0.15), transparent);
-  --vault-vignette: radial-gradient(ellipse at center, transparent 58%, rgb(0 0 0 / 0.72) 100%);
+    radial-gradient(1px 1px at 18% 22%, hsl(var(--vault-tint-hue) 25% 92% / 0.22), transparent),
+    radial-gradient(1px 1px at 72% 68%, hsl(var(--vault-tint-hue) 20% 90% / 0.16), transparent),
+    radial-gradient(1.2px 1.2px at 48% 38%, hsl(var(--vault-tint-hue) 28% 94% / 0.2), transparent),
+    radial-gradient(1px 1px at 86% 18%, hsl(var(--vault-tint-hue) 22% 92% / 0.14), transparent);
+  --vault-vignette: radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / 0.55) 100%);
   --vault-mist:
-    radial-gradient(ellipse 85% 50% at 50% -10%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.08), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 80% 100%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 55% / 0.05), transparent 48%);
-  --vault-nebula-edge: linear-gradient(180deg, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.04), transparent 30%);
+    radial-gradient(ellipse 85% 50% at 50% -10%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.06), transparent 55%);
+  --vault-nebula-edge: linear-gradient(180deg, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.03), transparent 28%);
   --vault-obelisk-beam: none;
-  --vault-scanlines: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.032) 2px,
-    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.032) 3px
-  );
-  --vault-carrier:
-    radial-gradient(ellipse 130% 90% at 50% 42%, transparent 38%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.028) 39%, transparent 41%),
-    radial-gradient(ellipse 105% 72% at 50% 42%, transparent 52%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.022) 53%, transparent 55%),
-    radial-gradient(ellipse 82% 58% at 50% 42%, transparent 66%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.018) 67%, transparent 69%),
-    radial-gradient(ellipse 62% 44% at 50% 42%, transparent 78%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.014) 79%, transparent 81%);
-  --vault-frequency-bars: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 5px,
-    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.024) 5px,
-    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.024) 6px
-  );
+  --vault-scanlines: none;
+  --vault-carrier: none;
+  --vault-frequency-bars: none;
 
-  /* Incandescent glow — reserved for signal accents */
-  --vault-glow-soft: 0 0 36px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.12);
-  --vault-glow-amber: 0 0 20px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.36), 0 0 44px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.14);
-  --vault-glow-text: 0 0 14px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.32);
+  /* Incandescent glow — single shadow where possible */
+  --vault-glow-soft: 0 0 24px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.1);
+  --vault-glow-amber: 0 0 16px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.28);
+  --vault-glow-text: 0 0 10px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.22);
   --vault-glow-inner: inset 0 0 24px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.08);
   --vault-glow-focus: 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.45), 0 0 22px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.22);
 

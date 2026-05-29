@@ -32,6 +32,30 @@ import { slideshowEligibleMedia } from '../lib/slideshowMedia'
 
 const api = () => window.collectionXiewer
 
+export const MEDIA_PAGE_SIZE = 500
+
+async function fetchMediaPage(
+  offset: number,
+  limit: number,
+  searchAst: SearchNode,
+  selectedCollectionId: number | null,
+  mediaSortOrder: MediaSortOrder,
+  hasSearchFilters: boolean
+): Promise<MediaItem[]> {
+  if (hasSearchFilters) {
+    return api().media.search(searchAst, limit, offset, mediaSortOrder)
+  }
+  if (selectedCollectionId) {
+    return api().media.list({
+      collectionId: selectedCollectionId,
+      limit,
+      offset,
+      sortOrder: mediaSortOrder
+    })
+  }
+  return api().media.list({ limit, offset, sortOrder: mediaSortOrder })
+}
+
 interface AppState {
   galleryMode: GalleryViewMode
   gridSize: number
@@ -43,6 +67,10 @@ interface AppState {
   tags: Tag[]
   tagGroups: TagGroup[]
   media: MediaItem[]
+  mediaHasMore: boolean
+  mediaLoadingMore: boolean
+  initLoading: boolean
+  initError: string | null
   selectedMediaId: number | null
   selectedMediaIds: number[]
   selectionAnchorId: number | null
@@ -94,6 +122,7 @@ interface AppState {
   refreshTags: () => Promise<void>
   refreshTagGroups: () => Promise<void>
   refreshMedia: () => Promise<void>
+  loadMoreMedia: () => Promise<void>
   bumpMediaTagsRevision: () => void
   bumpCollectionMembersRevision: () => void
   bumpCollectionDetailsRevision: () => void
@@ -111,6 +140,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   tags: [],
   tagGroups: [],
   media: [],
+  mediaHasMore: false,
+  mediaLoadingMore: false,
+  initLoading: true,
+  initError: null,
   selectedMediaId: null,
   selectedMediaIds: [],
   selectionAnchorId: null,
@@ -275,18 +308,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { searchAst, selectedCollectionId, mediaSortOrder } = get()
     const hasSearchFilters = !isEmptySearchAst(searchAst)
 
-    let media: MediaItem[]
-    if (hasSearchFilters) {
-      media = await api().media.search(searchAst, 1000, 0, mediaSortOrder)
-    } else if (selectedCollectionId) {
-      media = await api().media.list({
-        collectionId: selectedCollectionId,
-        limit: 1000,
-        sortOrder: mediaSortOrder
-      })
-    } else {
-      media = await api().media.list({ limit: 1000, sortOrder: mediaSortOrder })
-    }
+    let media = await fetchMediaPage(
+      0,
+      MEDIA_PAGE_SIZE,
+      searchAst,
+      selectedCollectionId,
+      mediaSortOrder,
+      hasSearchFilters
+    )
 
     if (hasSearchFilters && selectedCollectionId) {
       const members = await api().collections.members(selectedCollectionId)
@@ -308,17 +337,63 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({
       media,
+      mediaHasMore: media.length >= MEDIA_PAGE_SIZE,
+      mediaLoadingMore: false,
       selectedMediaIds: nextIds,
       selectedMediaId: nextPrimary,
       selectionAnchorId: nextAnchor
     })
   },
 
+  loadMoreMedia: async () => {
+    const { mediaHasMore, mediaLoadingMore, searchAst, selectedCollectionId, mediaSortOrder, media } =
+      get()
+    if (!mediaHasMore || mediaLoadingMore) return
+
+    const hasSearchFilters = !isEmptySearchAst(searchAst)
+    set({ mediaLoadingMore: true })
+
+    try {
+      let page = await fetchMediaPage(
+        media.length,
+        MEDIA_PAGE_SIZE,
+        searchAst,
+        selectedCollectionId,
+        mediaSortOrder,
+        hasSearchFilters
+      )
+
+      if (hasSearchFilters && selectedCollectionId) {
+        const members = await api().collections.members(selectedCollectionId)
+        const memberIds = new Set(members.map((m: CollectionMember) => m.media_id))
+        page = page.filter((m) => memberIds.has(m.id))
+      }
+
+      const existingIds = new Set(media.map((m) => m.id))
+      const appended = page.filter((m) => !existingIds.has(m.id))
+      set({
+        media: [...media, ...appended],
+        mediaHasMore: page.length >= MEDIA_PAGE_SIZE
+      })
+    } finally {
+      set({ mediaLoadingMore: false })
+    }
+  },
+
   init: async () => {
-    await get().refreshRoots()
-    await get().refreshCollections()
-    await get().refreshTags()
-    await get().refreshTagGroups()
-    await get().refreshMedia()
+    set({ initLoading: true, initError: null })
+    try {
+      await get().refreshRoots()
+      await get().refreshCollections()
+      await get().refreshTags()
+      await get().refreshTagGroups()
+      await get().refreshMedia()
+      set({ initLoading: false })
+    } catch (e) {
+      set({
+        initLoading: false,
+        initError: e instanceof Error ? e.message : 'Failed to initialize the library.'
+      })
+    }
   }
 }))

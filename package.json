@@ -1,6 +1,6 @@
 {
   "name": "collection-xiewer",
-  "version": "0.2.4",
+  "version": "1.0.0",
   "description": "Local-first media browser with rich tagging for art/reference archives",
   "main": "./out/main/index.js",
   "scripts": {
@@ -14,7 +14,10 @@
     "test:raster": "npx tsx src/main/lib/rasterFormats.test.ts",
     "test:heic": "npx tsx src/main/lib/heicImage.test.ts",
     "test:video": "npx tsx src/main/lib/videoThumb.test.ts",
-    "test": "npm run test:parser && npm run test:fts && npm run test:ast && npm run test:raster && npm run test:heic && npm run test:video",
+    "test:board-z": "npx tsx src/renderer/lib/boardZOrder.test.ts",
+    "test:board-layout": "npx tsx src/renderer/lib/boardLayout.test.ts",
+    "test:dimensions": "npx tsx src/shared/mediaDimensions.test.ts",
+    "test": "npm run test:parser && npm run test:fts && npm run test:ast && npm run test:raster && npm run test:heic && npm run test:video && npm run test:board-z && npm run test:board-layout && npm run test:dimensions",
     "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder --linux AppImage",
     "dist:publish": "npm run build && electron-builder --linux AppImage --publish always"
@@ -62,6 +65,7 @@
   "build": {
     "appId": "com.collectionxiewer.app",
     "productName": "CollectionXiewer",
+    "icon": "resources/icon.png",
     "publish": [
       {
         "provider": "github",

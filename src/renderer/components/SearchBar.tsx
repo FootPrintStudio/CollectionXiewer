@@ -192,7 +192,7 @@ export function SearchBar() {
       if (applyQuery(localText, true)) {
         /* refresh inside applyQuery when valid */
       }
-    }, 300)
+    }, 450)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }

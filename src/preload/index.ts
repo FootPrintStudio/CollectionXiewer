@@ -233,6 +233,12 @@ const api = {
         ipcRenderer.removeListener('updater:status', listener)
       }
     }
+  },
+  db: {
+    getPath: () => ipcRenderer.invoke('db:get-path') as Promise<string>,
+    getDataDir: () => ipcRenderer.invoke('db:get-data-dir') as Promise<string>,
+    openDataFolder: () => ipcRenderer.invoke('db:open-data-folder') as Promise<void>,
+    backup: () => ipcRenderer.invoke('db:backup') as Promise<string | null>
   }
 }
 
