@@ -133,3 +133,9 @@ export function isMediaTagDragId(id: string | number): boolean {
 }
 
 export const TAG_HOLD_MS = 650
+
+export const SEARCH_BAR_DROP_ID = 'search-bar-drop'
+
+export function isSearchBarDropId(id: string | number): boolean {
+  return String(id) === SEARCH_BAR_DROP_ID
+}

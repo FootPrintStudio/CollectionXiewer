@@ -5,10 +5,7 @@ import './styles/tokens.css'
 import './styles/app.css'
 import './styles/retro-chrome.css'
 import './styles/app-retro-overrides.css'
-import { initGrainTexture } from './lib/initGrainTexture'
-
-document.documentElement.dataset.ui = 'retro'
-initGrainTexture()
+document.documentElement.dataset.theme = 'vault'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,41 +1,190 @@
 :root {
-  /* Typography */
-  --font-display: 'Orbitron', 'Michroma', system-ui, sans-serif;
-  --font-mono: 'Share Tech Mono', 'IBM Plex Mono', ui-monospace, monospace;
-  --font-sans: 'Share Tech Mono', system-ui, sans-serif;
-
-  /* Geometry */
-  --radius: 0;
-  --radius-sm: 0;
-  --chip-radius: 0;
-  --shadow: 2px 2px 0 rgba(0, 0, 0, 0.85);
-  --shadow-hud: 3px 3px 0 rgba(0, 0, 0, 0.9);
-
-  /* Layout */
+  /* Layout — app-specific */
   --library-panel-w: 260px;
   --tag-panel-w: 320px;
   --previewer-min-h: 320px;
 
-  /* Retro-Futurism Grunger palette */
-  --bg: #0a0a0a;
-  --bg-elevated: #111111;
-  --bg-panel: #0e0e0e;
-  --surface: #141414;
-  --border: rgba(232, 236, 240, 0.2);
-  --border-dashed: rgba(232, 236, 240, 0.14);
-  --border-strong: rgba(232, 236, 240, 0.42);
-  --text: #e8ecef;
-  --text-muted: #7a8288;
-  --accent: #9eb4c8;
-  --accent-hover: #b8ccd8;
-  --accent-muted: rgba(158, 180, 200, 0.12);
-  --chip-bg: #1a1a1a;
-  --soft-chip: #161c22;
-  --danger: #c45c5c;
-  /* Grain tile URL set at runtime (initGrainTexture.ts); size for background-size */
-  --grain-tile: none;
-  --grain-size: 192px;
-  --grid-opacity: 0.04;
   --hud-bracket-size: 6px;
   --hud-bracket-weight: 1px;
+}
+
+[data-theme='vault'] {
+  color-scheme: dark;
+
+  /* Monochrome tint — adjusted via preview hue slider */
+  --vault-tint-hue: 42;
+  --vault-tint-sat: 8%;
+  --vault-tint-sat-strong: 12%;
+  --vault-tint-sat-muted: 6%;
+
+  /* Typography */
+  --font-display: 'IM Fell English SC', 'Cormorant Garamond', serif;
+  --font-serif: 'Cormorant Garamond', 'Palatino Linotype', serif;
+  --font-sans: 'Cormorant Garamond', 'Palatino Linotype', serif;
+  --font-mono: 'Courier New', 'Liberation Mono', monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.1875rem;
+  --text-2xl: 1.375rem;
+  --text-3xl: 1.625rem;
+  --text-4xl: 2rem;
+
+  /* Geometry — softened ancient tech */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --radius-full: 9999px;
+  --radius: var(--radius-md);
+  --chip-radius: var(--radius-md);
+  --hud-frame-radius: 1px;
+  --hud-frame-radius-alt: var(--radius-lg);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 12px rgb(0 0 0 / 0.6);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.72);
+  --shadow-lg: 0 14px 36px rgb(0 0 0 / 0.82);
+  --shadow: var(--shadow-sm);
+  --shadow-hud: var(--shadow-dropdown);
+
+  /* Stone void — desaturated monochrome (tinted via --vault-tint-hue) */
+  --color-bg: hsl(var(--vault-tint-hue) 4% 2%);
+  --color-bg-subtle: hsl(var(--vault-tint-hue) 4% 4%);
+  --color-surface: hsl(var(--vault-tint-hue) 5% 6%);
+  --color-surface-raised: hsl(var(--vault-tint-hue) 5% 8%);
+  --color-surface-overlay: hsl(var(--vault-tint-hue) 4% 2% / 0.95);
+
+  /* Text — pale stone on obsidian */
+  --color-text: hsl(var(--vault-tint-hue) 8% 92%);
+  --color-text-muted: hsl(var(--vault-tint-hue) 7% 76%);
+  --color-text-subtle: hsl(var(--vault-tint-hue) 6% 58%);
+  --color-text-inverse: hsl(var(--vault-tint-hue) 4% 4%);
+
+  /* Borders — ash grey, legible edges */
+  --color-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 86% / 0.2);
+  --color-border-strong: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 90% / 0.34);
+  --color-border-focus: hsl(var(--vault-tint-hue) var(--vault-tint-sat-strong) 78%);
+
+  /* Accent — muted stone gold */
+  --color-accent: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62%);
+  --color-accent-hover: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72%);
+  --color-accent-subtle: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62% / 0.14);
+  --color-accent-text: hsl(var(--vault-tint-hue) 4% 4%);
+  --color-accent-gold: hsl(var(--vault-tint-hue) var(--vault-tint-sat-strong) 78%);
+  --color-accent-pale: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 90%);
+  --color-accent-deep: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 48%);
+  --color-accent-ember: hsl(var(--vault-tint-hue) 10% 55%);
+
+  /* Semantic status */
+  --color-success: #708070;
+  --color-success-bg: rgb(112 128 112 / 0.14);
+  --color-success-border: rgb(112 128 112 / 0.34);
+  --color-success-text: #a8b8a8;
+
+  --color-warning: #a8a080;
+  --color-warning-bg: rgb(168 160 128 / 0.14);
+  --color-warning-border: rgb(168 160 128 / 0.34);
+  --color-warning-text: #ccc4a8;
+
+  --color-error: #a08078;
+  --color-error-bg: rgb(160 128 120 / 0.14);
+  --color-error-border: rgb(160 128 120 / 0.38);
+  --color-error-text: #c8a8a0;
+
+  --color-info: #909088;
+  --color-info-bg: rgb(144 144 136 / 0.12);
+  --color-info-border: rgb(144 144 136 / 0.26);
+  --color-info-text: #c8c8c0;
+
+  /* Interactive */
+  --color-link: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 80%);
+  --color-link-hover: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 88%);
+
+  /* Elevation */
+  --shadow-card: 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.08), var(--vault-glow-soft);
+  --shadow-dropdown: 0 16px 40px rgb(0 0 0 / 0.85), 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62% / 0.18), var(--vault-glow-soft);
+
+  /* Scrollbars */
+  --scrollbar-track: var(--color-bg-subtle);
+  --scrollbar-track-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.08);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface-raised));
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-accent-hover) 55%, var(--color-surface-raised));
+  --scrollbar-thumb-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.1);
+
+  /* Atmosphere — carrier hum, static & starfield grain */
+  --vault-grain-opacity: 0.072;
+  --vault-grain-blend: screen;
+  --vault-starfield:
+    radial-gradient(1px 1px at 12% 18%, hsl(var(--vault-tint-hue) 25% 92% / 0.28), transparent),
+    radial-gradient(1px 1px at 28% 64%, hsl(var(--vault-tint-hue) 20% 90% / 0.2), transparent),
+    radial-gradient(1.2px 1.2px at 44% 32%, hsl(var(--vault-tint-hue) 30% 95% / 0.32), transparent),
+    radial-gradient(1px 1px at 58% 78%, hsl(var(--vault-tint-hue) 18% 88% / 0.18), transparent),
+    radial-gradient(1px 1px at 72% 24%, hsl(var(--vault-tint-hue) 22% 92% / 0.24), transparent),
+    radial-gradient(0.8px 0.8px at 86% 56%, hsl(var(--vault-tint-hue) 15% 85% / 0.16), transparent),
+    radial-gradient(1px 1px at 6% 48%, hsl(var(--vault-tint-hue) 20% 90% / 0.14), transparent),
+    radial-gradient(1px 1px at 36% 8%, hsl(var(--vault-tint-hue) 25% 93% / 0.22), transparent),
+    radial-gradient(1px 1px at 64% 52%, hsl(var(--vault-tint-hue) 18% 87% / 0.12), transparent),
+    radial-gradient(1.5px 1.5px at 92% 12%, hsl(var(--vault-tint-hue) 28% 96% / 0.26), transparent),
+    radial-gradient(1px 1px at 18% 88%, hsl(var(--vault-tint-hue) 16% 86% / 0.1), transparent),
+    radial-gradient(1px 1px at 52% 92%, hsl(var(--vault-tint-hue) 20% 89% / 0.15), transparent);
+  --vault-vignette: radial-gradient(ellipse at center, transparent 58%, rgb(0 0 0 / 0.72) 100%);
+  --vault-mist:
+    radial-gradient(ellipse 85% 50% at 50% -10%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 55% / 0.05), transparent 48%);
+  --vault-nebula-edge: linear-gradient(180deg, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.04), transparent 30%);
+  --vault-obelisk-beam: none;
+  --vault-scanlines: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.032) 2px,
+    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.032) 3px
+  );
+  --vault-carrier:
+    radial-gradient(ellipse 130% 90% at 50% 42%, transparent 38%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.028) 39%, transparent 41%),
+    radial-gradient(ellipse 105% 72% at 50% 42%, transparent 52%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.022) 53%, transparent 55%),
+    radial-gradient(ellipse 82% 58% at 50% 42%, transparent 66%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.018) 67%, transparent 69%),
+    radial-gradient(ellipse 62% 44% at 50% 42%, transparent 78%, hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.014) 79%, transparent 81%);
+  --vault-frequency-bars: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 5px,
+    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.024) 5px,
+    hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 58% / 0.024) 6px
+  );
+
+  /* Incandescent glow — reserved for signal accents */
+  --vault-glow-soft: 0 0 36px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.12);
+  --vault-glow-amber: 0 0 20px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.36), 0 0 44px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.14);
+  --vault-glow-text: 0 0 14px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.32);
+  --vault-glow-inner: inset 0 0 24px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.08);
+  --vault-glow-focus: 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.45), 0 0 22px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.22);
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23c0bcae' stroke-width='1.2' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+
+  /* App token aliases — keeps existing component styles working */
+  --bg: var(--color-bg);
+  --bg-elevated: var(--color-surface-raised);
+  --bg-panel: var(--color-surface);
+  --surface: var(--color-surface);
+  --border: var(--color-border);
+  --border-dashed: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.14);
+  --border-strong: var(--color-border-strong);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-muted);
+  --text-subtle: var(--color-text-subtle);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
+  --accent-muted: var(--color-accent-subtle);
+  --accent-text: var(--color-accent-text);
+  --accent-spark: var(--color-accent-ember);
+  --chip-bg: var(--color-surface-raised);
+  --soft-chip: var(--color-surface);
+  --danger: var(--color-error);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
 }

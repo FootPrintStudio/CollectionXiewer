@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import { buildTagLibrarySections, getTagSiblings } from '../../shared/tagTree'
+import { formatTagLabel } from '../../shared/tagDisplay'
 import { useAppStore } from '../store/appStore'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { NewTagModal } from '../ui/NewTagModal'
@@ -31,6 +32,12 @@ interface NewTagRequest {
   tagGroupId: number | null
 }
 
+interface DeleteTagRequest {
+  tag: Tag
+  mediaCount: number
+  childCount: number
+}
+
 export function TagTreeView() {
   const tags = useAppStore((s) => s.tags)
   const tagGroups = useAppStore((s) => s.tagGroups)
@@ -38,6 +45,9 @@ export function TagTreeView() {
   const selectTag = useAppStore((s) => s.selectTag)
   const refreshTags = useAppStore((s) => s.refreshTags)
   const refreshTagGroups = useAppStore((s) => s.refreshTagGroups)
+  const refreshMedia = useAppStore((s) => s.refreshMedia)
+  const bumpMediaTagsRevision = useAppStore((s) => s.bumpMediaTagsRevision)
+  const bumpCollectionDetailsRevision = useAppStore((s) => s.bumpCollectionDetailsRevision)
 
   const { draggingTag, isPending, isReady, setReparentSideEffects } = useTagDnd()
 
@@ -47,6 +57,7 @@ export function TagTreeView() {
   const [newTagRequest, setNewTagRequest] = useState<NewTagRequest | null>(null)
   const [showNewTagGroup, setShowNewTagGroup] = useState(false)
   const [deleteTagGroup, setDeleteTagGroup] = useState<TagGroup | null>(null)
+  const [deleteTagRequest, setDeleteTagRequest] = useState<DeleteTagRequest | null>(null)
 
   const sections = useMemo(
     () => buildTagLibrarySections(tagGroups, tags),
@@ -121,6 +132,17 @@ export function TagTreeView() {
   const tagMenuIndex =
     menu?.parentId != null ? tagMenuSiblings.findIndex((t) => t.id === menu.parentId) : -1
 
+  const openDeleteTagDialog = useCallback(
+    async (tagId: number) => {
+      const tag = tags.find((t) => t.id === tagId)
+      if (!tag) return
+      setMenu(null)
+      const impact = await window.collectionXiewer.tags.deleteImpact(tagId)
+      setDeleteTagRequest({ tag, mediaCount: impact.mediaCount, childCount: impact.childCount })
+    },
+    [tags]
+  )
+
   const sortGroupRoots = (tagGroupId: number | null) => {
     void window.collectionXiewer.tags.sortGroupRootsAlphabetically(tagGroupId).then(() => refreshTags())
   }
@@ -174,6 +196,13 @@ export function TagTreeView() {
             onClick: () => {
               sortTagChildren(menu.parentId!)
               setMenu(null)
+            }
+          },
+          {
+            label: 'Delete tag',
+            danger: true,
+            onClick: () => {
+              void openDeleteTagDialog(menu.parentId!)
             }
           }
         ]
@@ -249,6 +278,35 @@ export function TagTreeView() {
     await refreshTags()
     setDeleteTagGroup(null)
   }
+
+  const confirmDeleteTag = async () => {
+    if (!deleteTagRequest) return
+    const deletedId = deleteTagRequest.tag.id
+    await window.collectionXiewer.tags.remove(deletedId)
+    if (selectedTagId === deletedId) {
+      selectTag(null)
+    }
+    await refreshTags()
+    bumpMediaTagsRevision()
+    bumpCollectionDetailsRevision()
+    await refreshMedia()
+    setDeleteTagRequest(null)
+  }
+
+  const deleteTagMessage = deleteTagRequest
+    ? (() => {
+        const label = formatTagLabel(deleteTagRequest.tag)
+        const parts = [
+          `Delete “${label}”? It will be removed from the tag library and from all media (${deleteTagRequest.mediaCount} item${deleteTagRequest.mediaCount === 1 ? '' : 's'}).`
+        ]
+        if (deleteTagRequest.childCount > 0) {
+          parts.push(
+            `${deleteTagRequest.childCount} direct child tag${deleteTagRequest.childCount === 1 ? '' : 's'} will become root-level tags.`
+          )
+        }
+        return parts.join(' ')
+      })()
+    : ''
 
   return (
     <div className="tag-tree">
@@ -329,6 +387,17 @@ export function TagTreeView() {
           danger
           onConfirm={() => void confirmDeleteTagGroup()}
           onCancel={() => setDeleteTagGroup(null)}
+        />
+      )}
+
+      {deleteTagRequest && (
+        <ConfirmDialog
+          title="Delete tag?"
+          message={deleteTagMessage}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => void confirmDeleteTag()}
+          onCancel={() => setDeleteTagRequest(null)}
         />
       )}
     </div>

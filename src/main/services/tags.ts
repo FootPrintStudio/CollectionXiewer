@@ -716,6 +716,63 @@ export function removeMediaTag(mediaId: number, tagId: number, subjectId: number
   }
 }
 
+export function getTagDeleteImpact(tagId: number): { mediaCount: number; childCount: number } {
+  const db = getDb()
+  if (!getTag(tagId)) {
+    return { mediaCount: 0, childCount: 0 }
+  }
+  const mediaCount = (
+    db.prepare(`SELECT COUNT(DISTINCT media_id) AS n FROM media_tags WHERE tag_id = ?`).get(tagId) as {
+      n: number
+    }
+  ).n
+  const childCount = (
+    db.prepare(`SELECT COUNT(*) AS n FROM tags WHERE parent_id = ?`).get(tagId) as { n: number }
+  ).n
+  return { mediaCount, childCount }
+}
+
+export function removeTag(id: number): void {
+  const tag = getTag(id)
+  if (!tag) throw new Error('Tag not found')
+
+  const db = getDb()
+  const refreshKeys = new Map<string, { media_id: number; subject_id: number }>()
+  const markRefresh = (media_id: number, subject_id: number | null) => {
+    if (subject_id == null) return
+    refreshKeys.set(`${media_id}:${subject_id}`, { media_id, subject_id })
+  }
+
+  for (const row of db
+    .prepare(
+      `SELECT DISTINCT media_id, subject_id FROM media_tags WHERE tag_id = ? AND subject_id IS NOT NULL`
+    )
+    .all(id) as { media_id: number; subject_id: number }[]) {
+    markRefresh(row.media_id, row.subject_id)
+  }
+  for (const row of db
+    .prepare(
+      `SELECT DISTINCT media_id, subject_id FROM media_tag_suggestions
+       WHERE tag_id = ? OR source_tag_id = ?`
+    )
+    .all(id, id) as { media_id: number; subject_id: number }[]) {
+    markRefresh(row.media_id, row.subject_id)
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM wiki_pages WHERE entity_type = 'tag' AND entity_id = ?`).run(id)
+    db.prepare(`DELETE FROM tags_fts WHERE rowid = ?`).run(id)
+    db.prepare(`DELETE FROM tags WHERE id = ?`).run(id)
+  })
+  tx()
+
+  rebuildAllClosure()
+
+  for (const { media_id, subject_id } of refreshKeys.values()) {
+    refreshSubjectSuggestions(media_id, subject_id)
+  }
+}
+
 export function tagWithLabel(tag: Tag): { tag: Tag; label: string } {
   return { tag, label: formatTagLabel(tag) }
 }

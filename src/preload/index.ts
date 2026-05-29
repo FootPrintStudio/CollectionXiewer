@@ -67,6 +67,9 @@ const api = {
       ipcRenderer.invoke('tags:sort-children-alphabetically', parentTagId),
     sortGroupRootsAlphabetically: (tagGroupId: number | null) =>
       ipcRenderer.invoke('tags:sort-group-roots-alphabetically', tagGroupId),
+    deleteImpact: (id: number) =>
+      ipcRenderer.invoke('tags:delete-impact', id) as Promise<{ mediaCount: number; childCount: number }>,
+    remove: (id: number) => ipcRenderer.invoke('tags:remove', id),
     search: (q: string) => ipcRenderer.invoke('tags:search', q) as Promise<Tag[]>,
     connections: (id: number) => ipcRenderer.invoke('tags:connections', id),
     addConnection: (sourceId: number, targetId: number, kind: 'hard' | 'soft') =>

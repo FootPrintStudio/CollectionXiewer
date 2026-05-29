@@ -30,6 +30,7 @@ import { addPrincipalTagToCollection } from '../lib/collectionPrincipalTags'
 import {
   TAG_HOLD_MS,
   isTagReparentDropId,
+  isSearchBarDropId,
   parseMediaTagDropTarget,
   parseTagGroupDropId,
   parseTagDragId,
@@ -199,6 +200,11 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
 
     const draggedId = parseTagDragId(event.active.id)
     if (draggedId == null) {
+      clear()
+      return
+    }
+
+    if (overId && isSearchBarDropId(overId) && activeData?.type === 'tag') {
       clear()
       return
     }

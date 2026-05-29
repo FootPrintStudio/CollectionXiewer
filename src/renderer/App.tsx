@@ -21,7 +21,6 @@ import { GalleryToolbarControls } from './components/GalleryToolbarControls'
 import { BulkTagBar } from './components/BulkTagBar'
 import { SlideshowOverlay } from './components/SlideshowOverlay'
 import { SettingsMenu } from './components/SettingsMenu'
-import { initGrainTexture } from './lib/initGrainTexture'
 
 export function App() {
   const init = useAppStore((s) => s.init)
@@ -52,7 +51,6 @@ export function App() {
 
   useEffect(() => {
     void init()
-    initGrainTexture()
   }, [init])
 
   useEffect(() => {

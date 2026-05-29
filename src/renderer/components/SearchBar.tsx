@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useDndMonitor, useDroppable } from '@dnd-kit/core'
 import type { SavedSearch } from '../../shared/types'
 import type { SearchNode } from '../../shared/searchAst'
 import { defaultSearchAst, isEmptySearchAst, countSearchClauses } from '../../shared/searchAst'
@@ -12,6 +13,9 @@ import { SearchAutocomplete, type SearchAutocompleteHandle } from './SearchAutoc
 import { handleSearchAutocompleteKeyDown } from '../lib/searchAutocompleteKeys'
 import { SavedSearchesMenu } from './SavedSearchesMenu'
 import { SaveSearchModal } from '../ui/SaveSearchModal'
+import { useTagDnd } from '../dnd/TagDndContext'
+import { SEARCH_BAR_DROP_ID, parseTagDragId } from '../dnd/tagDnd'
+import { appendTagToSearchQuery } from '../lib/appendTagToSearchQuery'
 
 const SYNTAX_HELP = `tag:slug — tag on media (descendants included)
 -tag:slug — without tag (inclusive tag: clauses in the same AND take priority)
@@ -46,8 +50,16 @@ export function SearchBar() {
   const [activeSavedSearchId, setActiveSavedSearchId] = useState<number | null>(null)
   const [saveModal, setSaveModal] = useState<{ queryText: string; ast: SearchNode } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const localTextRef = useRef(localText)
+  localTextRef.current = localText
   const inputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<SearchAutocompleteHandle>(null)
+  const { draggingTag } = useTagDnd()
+  const { setNodeRef: setSearchDropRef, isOver: isSearchDropOver } = useDroppable({
+    id: SEARCH_BAR_DROP_ID,
+    data: { type: 'search-bar' }
+  })
+  const isSearchTagDropHover = isSearchDropOver && draggingTag != null
 
   const resolveCtx: SearchResolveContext = useMemo(
     () => ({
@@ -200,10 +212,62 @@ export function SearchBar() {
     setSaveModal(committed)
   }
 
+  useDndMonitor({
+    onDragEnd(event) {
+      if (!event.over || String(event.over.id) !== SEARCH_BAR_DROP_ID) return
+      const tagId = parseTagDragId(event.active.id)
+      if (tagId == null) return
+      const data = event.active.data.current as { type?: string } | undefined
+      if (data?.type !== 'tag') return
+
+      const store = useAppStore.getState()
+      const tag = store.tags.find((t) => t.id === tagId)
+      if (!tag) return
+
+      const resolveCtx: SearchResolveContext = {
+        tags: store.tags.map((t) => ({
+          id: t.id,
+          slug: t.slug,
+          display_name: t.display_name,
+          disambiguator: t.disambiguator
+        })),
+        collections: store.collections.map((c) => ({ id: c.id, name: c.name })),
+        roots: store.roots.map((r) => ({ id: r.id, path: r.path }))
+      }
+
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+
+      const baseText =
+        localTextRef.current.trim() === store.searchQueryText.trim()
+          ? localTextRef.current
+          : store.searchQueryText
+      const next = appendTagToSearchQuery(baseText, tag, resolveCtx)
+      if (!next) return
+
+      setActiveSavedSearchId(null)
+      setLocalText(next.queryText)
+      setParseError(null)
+      store.setSearchQuery(next.queryText, next.ast)
+      void store.refreshMedia()
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+        const end = next.queryText.length
+        inputRef.current?.setSelectionRange(end, end)
+        setCursor(end)
+      })
+    }
+  })
+
   return (
     <div className="search-bar">
       <span className="search-bar__title">Search</span>
-      <div className="search-bar__input-wrap">
+      <div
+        ref={setSearchDropRef}
+        className={`search-bar__input-wrap${isSearchTagDropHover ? ' search-bar__input-wrap--tag-drop-hover' : ''}`}
+      >
         <input
           ref={inputRef}
           type="text"

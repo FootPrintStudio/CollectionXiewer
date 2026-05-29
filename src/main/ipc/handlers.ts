@@ -122,6 +122,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('tags:sort-group-roots-alphabetically', (_e, tagGroupId: number | null) => {
     tags.sortTagGroupRootsAlphabetically(tagGroupId)
   })
+  ipcMain.handle('tags:delete-impact', (_e, id: number) => tags.getTagDeleteImpact(id))
+  ipcMain.handle('tags:remove', (_e, id: number) => {
+    tags.removeTag(id)
+  })
 
   ipcMain.handle('tagGroups:list', () => tagGroups.listTagGroups())
   ipcMain.handle('tagGroups:create', (_e, label: string) => tagGroups.createTagGroup(label))
