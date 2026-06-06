@@ -2,6 +2,13 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.1.1 — 2026-05-18
+
+### Fixed
+- Subject region tag drops work after arrowing through preview (unique preview drop IDs, geometry outside zoom transform)
+- Preview fit-to-viewport and region visibility when navigating between media in preview
+- Universal subject tags now suppress the same soft suggestions on all other subjects
+
 ## 1.1.0 — 2026-05-18
 
 ### Added

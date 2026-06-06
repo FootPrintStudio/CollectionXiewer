@@ -789,6 +789,17 @@ body.panel-resize-active * {
   pointer-events: none;
 }
 
+.subject-region-viewport-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.subject-region--passive {
+  pointer-events: none !important;
+}
+
 .subject-region-layer--hidden {
   opacity: 0;
 }

@@ -559,10 +559,17 @@ export function refreshSubjectSuggestions(mediaId: number, subjectId: number): v
        AND NOT EXISTS (
          SELECT 1 FROM media_tags applied
          WHERE applied.media_id = mt.media_id
-           AND applied.subject_id = mt.subject_id
            AND applied.tag_id = tc.target_tag_id
+           AND (
+             applied.subject_id = mt.subject_id
+             OR applied.subject_id IN (
+               SELECT s.id FROM subjects s
+               WHERE s.media_id = mt.media_id
+                 AND LOWER(TRIM(s.label)) = LOWER(?)
+             )
+           )
        )`
-  ).run(mediaId, subjectId)
+  ).run(mediaId, subjectId, UNIVERSAL_SUBJECT_LABEL)
 }
 
 export function refreshMediaSuggestions(mediaId: number): void {
@@ -577,6 +584,7 @@ export function refreshMediaSuggestions(mediaId: number): void {
 }
 
 export function listMediaTagSuggestions(mediaId: number): MediaTagSuggestion[] {
+  refreshMediaSuggestions(mediaId)
   const rows = getDb()
     .prepare(
       `SELECT mts.media_id, mts.subject_id, mts.tag_id, mts.source_tag_id, t.*
@@ -713,7 +721,7 @@ export function applyTag(
     applied.push(tid)
   }
 
-  refreshSubjectSuggestions(mediaId, groupId)
+  refreshMediaSuggestions(mediaId)
   const soft = listSuggestionTagsForSubject(mediaId, groupId)
   return { applied, soft }
 }
@@ -754,8 +762,7 @@ export function moveMediaTag(
     )
   })
   move()
-  refreshSubjectSuggestions(mediaId, fromSubjectId)
-  refreshSubjectSuggestions(mediaId, toSubjectId)
+  refreshMediaSuggestions(mediaId)
 }
 
 export function removeMediaTag(mediaId: number, tagId: number, subjectId: number | null): void {
@@ -763,13 +770,12 @@ export function removeMediaTag(mediaId: number, tagId: number, subjectId: number
     getDb()
       .prepare(`DELETE FROM media_tags WHERE media_id = ? AND tag_id = ?`)
       .run(mediaId, tagId)
-    refreshMediaSuggestions(mediaId)
   } else {
     getDb()
       .prepare(`DELETE FROM media_tags WHERE media_id = ? AND tag_id = ? AND subject_id = ?`)
       .run(mediaId, tagId, subjectId)
-    refreshSubjectSuggestions(mediaId, subjectId)
   }
+  refreshMediaSuggestions(mediaId)
 }
 
 export function getTagDeleteImpact(tagId: number): { mediaCount: number; childCount: number } {

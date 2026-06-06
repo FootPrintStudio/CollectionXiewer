@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
   useSensor,
   useSensors,
@@ -293,6 +294,9 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
       <DndContext
         sensors={sensors}
         collisionDetection={galleryCollisionDetection}
+        measuring={{
+          droppable: { strategy: MeasuringStrategy.Always }
+        }}
         modifiers={[snapCenterToCursor]}
         autoScroll={pointerAutoScroll.autoScroll}
         onDragStart={onDragStart}

@@ -90,8 +90,13 @@ export function MediaDetailsPanel() {
   }, [])
 
   useEffect(() => {
-    if (selectedMediaId) void load(selectedMediaId)
-    else setMedia(null)
+    if (!selectedMediaId) {
+      setMedia(null)
+      setSubjects([])
+      return
+    }
+    setSubjects([])
+    void load(selectedMediaId)
   }, [selectedMediaId, mediaTagsRevision, subjectsRevision, collectionMembersRevision, load])
 
   const savedFileNameStem = useMemo(() => {

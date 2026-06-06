@@ -22,22 +22,43 @@ export function mediaTagsDropId(mediaId: number): string {
   return `media-tags-drop-${mediaId}`
 }
 
+export const SUBJECT_DROP_PREFIX = 'media-subject-drop-'
+export const PREVIEW_SUBJECT_DROP_PREFIX = 'media-preview-subject-drop-'
+
 export function subjectDropId(mediaId: number, subjectId: number): string {
-  return `media-subject-drop-${mediaId}-${subjectId}`
+  return `${SUBJECT_DROP_PREFIX}${mediaId}-${subjectId}`
 }
 
-export function parseSubjectDropId(
+/** Preview image region targets — separate from sidebar subject drops (dnd-kit requires unique ids). */
+export function previewSubjectDropId(mediaId: number, subjectId: number): string {
+  return `${PREVIEW_SUBJECT_DROP_PREFIX}${mediaId}-${subjectId}`
+}
+
+function parseSubjectPairFromPrefix(
+  prefix: string,
   id: string | number
 ): { mediaId: number; subjectId: number } | null {
   const s = String(id)
-  if (!s.startsWith('media-subject-drop-')) return null
-  const rest = s.slice('media-subject-drop-'.length)
+  if (!s.startsWith(prefix)) return null
+  const rest = s.slice(prefix.length)
   const sep = rest.lastIndexOf('-')
   if (sep <= 0) return null
   const mediaId = Number(rest.slice(0, sep))
   const subjectId = Number(rest.slice(sep + 1))
   if (!Number.isFinite(mediaId) || !Number.isFinite(subjectId)) return null
   return { mediaId, subjectId }
+}
+
+export function parseSubjectDropId(
+  id: string | number
+): { mediaId: number; subjectId: number } | null {
+  return parseSubjectPairFromPrefix(SUBJECT_DROP_PREFIX, id)
+}
+
+export function parsePreviewSubjectDropId(
+  id: string | number
+): { mediaId: number; subjectId: number } | null {
+  return parseSubjectPairFromPrefix(PREVIEW_SUBJECT_DROP_PREFIX, id)
 }
 
 export function parseTagDragId(id: string | number): number | null {
@@ -69,6 +90,8 @@ export function parseMediaTagsDropId(id: string | number): number | null {
 }
 
 export function parseMediaTagTargetId(id: string | number): number | null {
+  const previewSub = parsePreviewSubjectDropId(id)
+  if (previewSub) return previewSub.mediaId
   const sub = parseSubjectDropId(id)
   if (sub) return sub.mediaId
   return parseMediaDropId(id) ?? parseMediaTagsDropId(id) ?? null
@@ -77,6 +100,8 @@ export function parseMediaTagTargetId(id: string | number): number | null {
 export function parseMediaTagDropTarget(
   id: string | number
 ): { mediaId: number; subjectId?: number } | null {
+  const previewSub = parsePreviewSubjectDropId(id)
+  if (previewSub) return { mediaId: previewSub.mediaId, subjectId: previewSub.subjectId }
   const sub = parseSubjectDropId(id)
   if (sub) return { mediaId: sub.mediaId, subjectId: sub.subjectId }
   const mediaId = parseMediaDropId(id) ?? parseMediaTagsDropId(id)

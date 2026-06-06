@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  computePreviewImageGeometry,
+  type PreviewImageGeometry
+} from '../lib/previewImageGeometry'
 
 const MIN_SCALE = 0.25
 const MAX_SCALE = 8
@@ -7,8 +11,11 @@ const ZOOM_STEP = 0.12
 interface Props {
   src: string
   alt?: string
-  overlay?: ReactNode
+  /** Indexed dimensions used until the image reports natural size. */
+  layoutSize?: { w: number; h: number } | null
   onNaturalSize?: (size: { w: number; h: number } | null) => void
+  /** Rendered above the image but outside the CSS zoom transform (for DnD hit targets). */
+  regionOverlay?: (geometry: PreviewImageGeometry) => React.ReactNode
 }
 
 function fitScaleForViewport(
@@ -21,23 +28,43 @@ function fitScaleForViewport(
   return Math.min(viewportW / imageW, viewportH / imageH, 1)
 }
 
-export function ZoomablePreviewImage({ src, alt = '', overlay, onNaturalSize }: Props) {
+export function ZoomablePreviewImage({
+  src,
+  alt = '',
+  layoutSize = null,
+  onNaturalSize,
+  regionOverlay
+}: Props) {
   const viewportRef = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [scale, setScale] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
+  const [geometry, setGeometry] = useState<PreviewImageGeometry | null>(null)
   const dragRef = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 })
   const onNaturalSizeRef = useRef(onNaturalSize)
   onNaturalSizeRef.current = onNaturalSize
 
-  useEffect(() => {
+  const applyNaturalFromImg = useCallback((img: HTMLImageElement) => {
+    if (img.naturalWidth <= 0 || img.naturalHeight <= 0) return
+    const size = { w: img.naturalWidth, h: img.naturalHeight }
+    setNatural(size)
+    onNaturalSizeRef.current?.(size)
+    setScale(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  useLayoutEffect(() => {
     setNatural(null)
     onNaturalSizeRef.current?.(null)
     setScale(1)
     setPan({ x: 0, y: 0 })
-  }, [src])
+
+    const img = imgRef.current
+    if (img?.complete) applyNaturalFromImg(img)
+  }, [src, applyNaturalFromImg])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -52,9 +79,30 @@ export function ZoomablePreviewImage({ src, alt = '', overlay, onNaturalSize }: 
     return () => ro.disconnect()
   }, [])
 
+  const contentSize = natural ?? layoutSize
   const baseFit =
-    natural != null ? fitScaleForViewport(viewport.w, viewport.h, natural.w, natural.h) : 1
+    contentSize != null
+      ? fitScaleForViewport(viewport.w, viewport.h, contentSize.w, contentSize.h)
+      : 1
   const totalScale = baseFit * scale
+
+  useLayoutEffect(() => {
+    if (!contentSize) {
+      setGeometry(null)
+      return
+    }
+    setGeometry(
+      computePreviewImageGeometry(
+        viewport.w,
+        viewport.h,
+        contentSize.w,
+        contentSize.h,
+        totalScale,
+        pan.x,
+        pan.y
+      )
+    )
+  }, [contentSize, viewport.w, viewport.h, totalScale, pan.x, pan.y])
 
   const clampScale = (value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, value))
 
@@ -100,12 +148,7 @@ export function ZoomablePreviewImage({ src, alt = '', overlay, onNaturalSize }: 
   }
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget
-    const size = { w: img.naturalWidth, h: img.naturalHeight }
-    setNatural(size)
-    onNaturalSizeRef.current?.(size)
-    setScale(1)
-    setPan({ x: 0, y: 0 })
+    applyNaturalFromImg(e.currentTarget)
   }
 
   return (
@@ -126,22 +169,26 @@ export function ZoomablePreviewImage({ src, alt = '', overlay, onNaturalSize }: 
         <div
           className="previewer-zoom-content"
           style={
-            natural
-              ? { position: 'relative', width: natural.w, height: natural.h }
+            contentSize
+              ? { position: 'relative', width: contentSize.w, height: contentSize.h }
               : undefined
           }
         >
           <img
+            ref={imgRef}
+            key={src}
             src={src}
             alt={alt}
             draggable={false}
-            width={natural?.w}
-            height={natural?.h}
+            width={contentSize?.w}
+            height={contentSize?.h}
             onLoad={onImageLoad}
           />
-          {natural && overlay ? overlay : null}
         </div>
       </div>
+      {geometry && regionOverlay ? (
+        <div className="subject-region-viewport-layer">{regionOverlay(geometry)}</div>
+      ) : null}
     </div>
   )
 }

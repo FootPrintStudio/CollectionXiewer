@@ -57,37 +57,43 @@ export function MediaPreviewer() {
     [currentIndex, mediaList, setSelectedMediaId]
   )
 
-  const load = useCallback(async (id: number) => {
+  const load = useCallback(async (id: number, cancelled?: () => boolean) => {
     const m = await window.collectionXiewer.media.get(id)
+    if (cancelled?.()) return
     setMedia(m)
     if (!m) {
       setHasCrop(false)
       setSubjects([])
+      setPreviewSrc(null)
       return
     }
     const savedCrop = await window.collectionXiewer.crop.get(id)
+    if (cancelled?.()) return
     setHasCrop(!!savedCrop)
     const src = await resolvePreviewSrc(m, !!savedCrop)
+    if (cancelled?.()) return
     setPreviewSrc(src)
     await window.collectionXiewer.subjects.ensure(id)
+    if (cancelled?.()) return
     setSubjects((await window.collectionXiewer.subjects.list(id)) as Subject[])
   }, [])
 
   useEffect(() => {
-    if (selectedMediaId) void load(selectedMediaId)
-    else {
+    if (!selectedMediaId) {
       setMedia(null)
       setPreviewSrc(null)
       setSubjects([])
+      return
     }
-  }, [selectedMediaId, load])
 
-  useEffect(() => {
-    if (!selectedMediaId) return
-    void window.collectionXiewer.subjects.ensure(selectedMediaId).then(async () => {
-      setSubjects((await window.collectionXiewer.subjects.list(selectedMediaId)) as Subject[])
-    })
-  }, [selectedMediaId, subjectsRevision])
+    let cancelled = false
+    setSubjects([])
+
+    void load(selectedMediaId, () => cancelled)
+    return () => {
+      cancelled = true
+    }
+  }, [selectedMediaId, subjectsRevision, load])
 
   useEffect(() => {
     if (!isRegionEditing) {
@@ -179,6 +185,7 @@ export function MediaPreviewer() {
     return <div className="empty-hint">No media selected</div>
   }
 
+  const isMediaReady = media.id === selectedMediaId
   const isCroppable = media.kind === 'image' || media.kind === 'motion'
   const positionLabel =
     currentIndex >= 0 ? `${currentIndex + 1} / ${mediaList.length}` : null
@@ -369,20 +376,29 @@ export function MediaPreviewer() {
             src={mediaUrlFromPath(media.absolute_path)}
             onPosterSaved={() => void useAppStore.getState().refreshMedia()}
           />
-        ) : previewSrc && isCroppable ? (
+        ) : previewSrc && isCroppable && isMediaReady ? (
           <ZoomablePreviewImage
+            key={selectedMediaId}
             src={previewSrc}
             alt={media.relative_path}
-            overlay={
+            layoutSize={
+              media.width != null && media.height != null
+                ? { w: media.width, h: media.height }
+                : null
+            }
+            regionOverlay={(geometry) => (
               <SubjectRegionOverlay
-                mediaId={media.id}
+                mediaId={selectedMediaId}
+                geometry={geometry}
                 subjects={subjects}
                 visible={showSubjectRegions}
                 forceVisible={forceVisibleRegions}
                 highlightSubjectId={subjectRegionEdit?.subjectId ?? null}
               />
-            }
+            )}
           />
+        ) : previewSrc && isCroppable ? (
+          <span className="empty-hint">Loading…</span>
         ) : previewSrc ? (
           <img src={previewSrc} alt="" />
         ) : (
