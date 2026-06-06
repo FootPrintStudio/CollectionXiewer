@@ -1,7 +1,7 @@
 import { dialog, ipcMain, shell } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { parseSearchAst } from '../../shared/searchAst'
-import type { CropRect, MediaListQuery } from '../../shared/types'
+import type { CropRect, MediaListQuery, SubjectUpdatePatch } from '../../shared/types'
 import * as roots from '../services/roots'
 import * as mediaQuery from '../services/mediaQuery'
 import * as tags from '../services/tags'
@@ -186,6 +186,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('subjects:list', (_e, mediaId: number) => tags.listSubjects(mediaId))
   ipcMain.handle('subjects:ensure', (_e, mediaId: number) => tags.ensureUniversalSubject(mediaId))
   ipcMain.handle('subjects:add', (_e, mediaId: number, label: string) => tags.addSubject(mediaId, label))
+  ipcMain.handle('subjects:update', (_e, subjectId: number, patch: SubjectUpdatePatch) =>
+    tags.updateSubject(subjectId, patch)
+  )
+  ipcMain.handle('subjects:clearRegion', (_e, subjectId: number) => tags.clearSubjectRegion(subjectId))
   ipcMain.handle('subjects:remove', (_e, subjectId: number) => tags.removeSubject(subjectId))
 
   ipcMain.handle('identifiers:list', () => identifiers.listIdentifiers())

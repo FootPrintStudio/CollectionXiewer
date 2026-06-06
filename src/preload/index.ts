@@ -8,7 +8,8 @@ import type {
   MediaTagSuggestion,
   Tag,
   TagGroup,
-  CollectionExternalLink
+  CollectionExternalLink,
+  SubjectUpdatePatch
 } from '../shared/types'
 import type { SearchNode } from '../shared/searchAst'
 import type { BoardDocument, BoardSummary } from '../shared/boardSchema'
@@ -117,6 +118,9 @@ const api = {
     list: (mediaId: number) => ipcRenderer.invoke('subjects:list', mediaId),
     ensure: (mediaId: number) => ipcRenderer.invoke('subjects:ensure', mediaId),
     add: (mediaId: number, label: string) => ipcRenderer.invoke('subjects:add', mediaId, label),
+    update: (subjectId: number, patch: SubjectUpdatePatch) =>
+      ipcRenderer.invoke('subjects:update', subjectId, patch),
+    clearRegion: (subjectId: number) => ipcRenderer.invoke('subjects:clearRegion', subjectId),
     remove: (subjectId: number) => ipcRenderer.invoke('subjects:remove', subjectId)
   },
   collections: {

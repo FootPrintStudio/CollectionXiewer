@@ -81,7 +81,11 @@ CREATE TABLE IF NOT EXISTS subjects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   media_id INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
   label TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  region_x REAL,
+  region_y REAL,
+  region_w REAL,
+  region_h REAL
 );
 
 -- Same tag may appear on one media item once per subject (e.g. shared trait on different characters).

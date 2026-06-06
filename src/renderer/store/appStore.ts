@@ -34,6 +34,12 @@ const api = () => window.collectionXiewer
 
 export const MEDIA_PAGE_SIZE = 500
 
+export interface SubjectRegionEditTarget {
+  mediaId: number
+  subjectId: number
+  label: string
+}
+
 async function fetchMediaPage(
   offset: number,
   limit: number,
@@ -79,6 +85,9 @@ interface AppState {
   searchQueryText: string
   searchAst: SearchNode
   cropMode: boolean
+  showSubjectRegions: boolean
+  subjectRegionEdit: SubjectRegionEditTarget | null
+  subjectsRevision: number
   mainView: 'gallery' | 'preview' | 'board'
   detailsFocus: DetailsFocus
   mediaTagsRevision: number
@@ -107,6 +116,9 @@ interface AppState {
   setSelectedCollectionId: (id: number | null) => void
   setSearchQuery: (text: string, ast: SearchNode) => void
   setCropMode: (v: boolean) => void
+  setShowSubjectRegions: (v: boolean) => void
+  setSubjectRegionEdit: (target: SubjectRegionEditTarget | null) => void
+  bumpSubjectsRevision: () => void
   setMainView: (v: 'gallery' | 'preview' | 'board') => void
   setDetailsFocus: (v: DetailsFocus) => void
   openPreview: (mediaId: number) => void
@@ -152,6 +164,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQueryText: '',
   searchAst: defaultSearchAst,
   cropMode: false,
+  showSubjectRegions: false,
+  subjectRegionEdit: null,
+  subjectsRevision: 0,
   mainView: 'gallery',
   detailsFocus: 'media',
   mediaTagsRevision: 0,
@@ -183,6 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedMediaIds: selectedMediaId != null ? [selectedMediaId] : [],
       selectionAnchorId: selectedMediaId,
       cropMode: false,
+      subjectRegionEdit: null,
       ...(selectedMediaId != null ? { detailsFocus: 'media' as const } : {})
     }),
 
@@ -240,9 +256,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       mainView: 'preview',
       detailsFocus: 'media',
       selectedTagId: null,
-      cropMode: false
+      cropMode: false,
+      subjectRegionEdit: null
     }),
-  closePreview: () => set({ mainView: 'gallery', cropMode: false }),
+  closePreview: () =>
+    set({ mainView: 'gallery', cropMode: false, subjectRegionEdit: null }),
   openSlideshow: () => {
     const { media, selectedMediaId } = get()
     const slideshowItems = slideshowEligibleMedia(media)
@@ -281,7 +299,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   setSelectedCollectionId: (selectedCollectionId) => set({ selectedCollectionId }),
   setSearchQuery: (searchQueryText, searchAst) => set({ searchQueryText, searchAst }),
-  setCropMode: (cropMode) => set({ cropMode }),
+  setCropMode: (cropMode) =>
+    set({ cropMode, ...(cropMode ? { subjectRegionEdit: null } : {}) }),
+  setShowSubjectRegions: (showSubjectRegions) => set({ showSubjectRegions }),
+  setSubjectRegionEdit: (subjectRegionEdit) =>
+    set({
+      subjectRegionEdit,
+      ...(subjectRegionEdit ? { cropMode: false, showSubjectRegions: true } : {})
+    }),
+  bumpSubjectsRevision: () => set((s) => ({ subjectsRevision: s.subjectsRevision + 1 })),
   bumpMediaTagsRevision: () => set((s) => ({ mediaTagsRevision: s.mediaTagsRevision + 1 })),
   bumpCollectionMembersRevision: () =>
     set((s) => ({ collectionMembersRevision: s.collectionMembersRevision + 1 })),

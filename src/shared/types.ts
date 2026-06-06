@@ -83,6 +83,15 @@ export interface Subject {
   media_id: number
   label: string
   sort_order: number
+  region_x: number | null
+  region_y: number | null
+  region_w: number | null
+  region_h: number | null
+}
+
+export interface SubjectUpdatePatch {
+  label?: string
+  region?: CropRect | null
 }
 
 export interface MediaTag {

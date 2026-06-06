@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { CropRect, MediaItem } from '../../../shared/types'
+import type { CropRect, MediaItem, Subject } from '../../../shared/types'
+import { subjectRegion } from '../../../shared/subjects'
 import { useAppStore } from '../../store/appStore'
 import { useMediaTagDrop } from '../../dnd/useMediaTagDrop'
+import { useTagDnd } from '../../dnd/TagDndContext'
 import { ZoomablePreviewImage } from '../../components/ZoomablePreviewImage'
+import { SubjectRegionOverlay } from '../../components/SubjectRegionOverlay'
+import { SubjectRegionEditor } from '../../components/SubjectRegionEditor'
+import { resolvePreviewSrc } from '../../lib/previewSource'
 import { mediaUrlFromPath } from '../../lib/fileUrl'
 import { MarqueeCropEditor } from '../../components/MarqueeCropEditor'
 import { VideoPreviewPlayer } from '../../components/VideoPreviewPlayer'
 import { isEditableTarget } from '../../lib/keyboardTargets'
+import { showError } from '../../store/toastStore'
 
 export function MediaPreviewer() {
   const mediaList = useAppStore((s) => s.media)
@@ -15,13 +21,22 @@ export function MediaPreviewer() {
   const setSelectedMediaId = useAppStore((s) => s.setSelectedMediaId)
   const cropMode = useAppStore((s) => s.cropMode)
   const setCropMode = useAppStore((s) => s.setCropMode)
+  const showSubjectRegions = useAppStore((s) => s.showSubjectRegions)
+  const setShowSubjectRegions = useAppStore((s) => s.setShowSubjectRegions)
+  const subjectRegionEdit = useAppStore((s) => s.subjectRegionEdit)
+  const setSubjectRegionEdit = useAppStore((s) => s.setSubjectRegionEdit)
+  const subjectsRevision = useAppStore((s) => s.subjectsRevision)
+  const bumpSubjectsRevision = useAppStore((s) => s.bumpSubjectsRevision)
   const closePreview = useAppStore((s) => s.closePreview)
+  const { draggingTag, draggingMediaTag } = useTagDnd()
   const { setNodeRef: setPreviewDropRef, isDropHover } = useMediaTagDrop(selectedMediaId)
 
   const [media, setMedia] = useState<MediaItem | null>(null)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [cropRect, setCropRect] = useState<CropRect | null>(null)
   const [hasCrop, setHasCrop] = useState(false)
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [regionEditRect, setRegionEditRect] = useState<CropRect | null>(null)
 
   const currentIndex = useMemo(
     () => mediaList.findIndex((m) => m.id === selectedMediaId),
@@ -29,6 +44,9 @@ export function MediaPreviewer() {
   )
   const hasPrev = currentIndex > 0
   const hasNext = currentIndex >= 0 && currentIndex < mediaList.length - 1
+  const isRegionEditing =
+    subjectRegionEdit != null && subjectRegionEdit.mediaId === selectedMediaId
+  const forceVisibleRegions = draggingTag != null || draggingMediaTag != null
 
   const goToRelative = useCallback(
     (delta: number) => {
@@ -44,18 +62,15 @@ export function MediaPreviewer() {
     setMedia(m)
     if (!m) {
       setHasCrop(false)
+      setSubjects([])
       return
     }
     const savedCrop = await window.collectionXiewer.crop.get(id)
     setHasCrop(!!savedCrop)
-    if (m.kind === 'motion') {
-      setPreviewSrc(mediaUrlFromPath(m.absolute_path))
-      return
-    }
-    const b64 = await window.collectionXiewer.preview.get(id, 2000)
-    if (b64) setPreviewSrc(`data:image/jpeg;base64,${b64}`)
-    else if (m.kind === 'video') setPreviewSrc(mediaUrlFromPath(m.absolute_path))
-    else setPreviewSrc(null)
+    const src = await resolvePreviewSrc(m, !!savedCrop)
+    setPreviewSrc(src)
+    await window.collectionXiewer.subjects.ensure(id)
+    setSubjects((await window.collectionXiewer.subjects.list(id)) as Subject[])
   }, [])
 
   useEffect(() => {
@@ -63,8 +78,25 @@ export function MediaPreviewer() {
     else {
       setMedia(null)
       setPreviewSrc(null)
+      setSubjects([])
     }
   }, [selectedMediaId, load])
+
+  useEffect(() => {
+    if (!selectedMediaId) return
+    void window.collectionXiewer.subjects.ensure(selectedMediaId).then(async () => {
+      setSubjects((await window.collectionXiewer.subjects.list(selectedMediaId)) as Subject[])
+    })
+  }, [selectedMediaId, subjectsRevision])
+
+  useEffect(() => {
+    if (!isRegionEditing) {
+      setRegionEditRect(null)
+      return
+    }
+    const subject = subjects.find((s) => s.id === subjectRegionEdit!.subjectId)
+    setRegionEditRect(subject ? subjectRegion(subject) : null)
+  }, [isRegionEditing, subjectRegionEdit, subjects])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,10 +107,15 @@ export function MediaPreviewer() {
           setCropRect(null)
           return
         }
+        if (isRegionEditing) {
+          setSubjectRegionEdit(null)
+          setRegionEditRect(null)
+          return
+        }
         closePreview()
         return
       }
-      if (cropMode) return
+      if (cropMode || isRegionEditing) return
       if (media?.kind === 'video') {
         const videoKeys = [' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F', 'm', 'M', 'k', 'K']
         if (videoKeys.includes(e.key)) return
@@ -93,7 +130,15 @@ export function MediaPreviewer() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [closePreview, cropMode, goToRelative, setCropMode, media?.kind])
+  }, [
+    closePreview,
+    cropMode,
+    goToRelative,
+    isRegionEditing,
+    setCropMode,
+    setSubjectRegionEdit,
+    media?.kind
+  ])
 
   const saveCrop = async () => {
     if (!media || !cropRect) return
@@ -104,6 +149,32 @@ export function MediaPreviewer() {
     void load(media.id)
   }
 
+  const saveSubjectRegion = async () => {
+    if (!subjectRegionEdit || !regionEditRect) return
+    try {
+      await window.collectionXiewer.subjects.update(subjectRegionEdit.subjectId, {
+        region: regionEditRect
+      })
+      setSubjectRegionEdit(null)
+      setRegionEditRect(null)
+      bumpSubjectsRevision()
+    } catch (e) {
+      showError(e)
+    }
+  }
+
+  const clearSubjectRegion = async () => {
+    if (!subjectRegionEdit) return
+    try {
+      await window.collectionXiewer.subjects.clearRegion(subjectRegionEdit.subjectId)
+      setSubjectRegionEdit(null)
+      setRegionEditRect(null)
+      bumpSubjectsRevision()
+    } catch (e) {
+      showError(e)
+    }
+  }
+
   if (!selectedMediaId || !media) {
     return <div className="empty-hint">No media selected</div>
   }
@@ -111,6 +182,9 @@ export function MediaPreviewer() {
   const isCroppable = media.kind === 'image' || media.kind === 'motion'
   const positionLabel =
     currentIndex >= 0 ? `${currentIndex + 1} / ${mediaList.length}` : null
+  const editingSubject = isRegionEditing
+    ? subjects.find((s) => s.id === subjectRegionEdit!.subjectId)
+    : null
 
   return (
     <div className="previewer-full">
@@ -142,16 +216,28 @@ export function MediaPreviewer() {
             <span className="previewer-position"> · {positionLabel}</span>
           ) : null}
         </span>
-        {isCroppable && (
+        {isCroppable && !isRegionEditing && (
           <button
             type="button"
             className={cropMode ? 'primary' : ''}
+            disabled={isRegionEditing}
             onClick={() => {
               if (cropMode) setCropRect(null)
               setCropMode(!cropMode)
             }}
           >
             Crop
+          </button>
+        )}
+        {isCroppable && !cropMode && (
+          <button
+            type="button"
+            className={showSubjectRegions ? 'primary' : ''}
+            disabled={isRegionEditing}
+            onClick={() => setShowSubjectRegions(!showSubjectRegions)}
+            title="Show subject regions on image"
+          >
+            Regions
           </button>
         )}
         {cropMode && (
@@ -177,6 +263,33 @@ export function MediaPreviewer() {
               }}
             >
               Reset
+            </button>
+          </>
+        )}
+        {isRegionEditing && subjectRegionEdit && (
+          <>
+            <span className="previewer-crop-hint">
+              Editing region for “{subjectRegionEdit.label}”
+            </span>
+            <button
+              type="button"
+              className="primary"
+              disabled={!regionEditRect}
+              onClick={() => void saveSubjectRegion()}
+            >
+              Save region
+            </button>
+            <button type="button" onClick={() => void clearSubjectRegion()}>
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubjectRegionEdit(null)
+                setRegionEditRect(null)
+              }}
+            >
+              Cancel
             </button>
           </>
         )}
@@ -208,7 +321,7 @@ export function MediaPreviewer() {
         ref={setPreviewDropRef}
         className={`previewer-media-full${isDropHover ? ' media-tag-drop-hover' : ''}`}
       >
-        {!cropMode && (hasPrev || hasNext) ? (
+        {!cropMode && !isRegionEditing && (hasPrev || hasNext) ? (
           <>
             <button
               type="button"
@@ -232,7 +345,17 @@ export function MediaPreviewer() {
             </button>
           </>
         ) : null}
-        {cropMode && previewSrc && isCroppable ? (
+        {isRegionEditing && previewSrc && isCroppable && editingSubject ? (
+          <div className="crop-container">
+            <SubjectRegionEditor
+              key={editingSubject.id}
+              src={previewSrc}
+              subjectLabel={editingSubject.label}
+              initialRect={subjectRegion(editingSubject)}
+              onRectChange={setRegionEditRect}
+            />
+          </div>
+        ) : cropMode && previewSrc && isCroppable ? (
           <div className="crop-container">
             <MarqueeCropEditor
               src={previewSrc}
@@ -247,7 +370,19 @@ export function MediaPreviewer() {
             onPosterSaved={() => void useAppStore.getState().refreshMedia()}
           />
         ) : previewSrc && isCroppable ? (
-          <ZoomablePreviewImage src={previewSrc} alt={media.relative_path} />
+          <ZoomablePreviewImage
+            src={previewSrc}
+            alt={media.relative_path}
+            overlay={
+              <SubjectRegionOverlay
+                mediaId={media.id}
+                subjects={subjects}
+                visible={showSubjectRegions}
+                forceVisible={forceVisibleRegions}
+                highlightSubjectId={subjectRegionEdit?.subjectId ?? null}
+              />
+            }
+          />
         ) : previewSrc ? (
           <img src={previewSrc} alt="" />
         ) : (

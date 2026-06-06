@@ -8,6 +8,7 @@ import { SubjectSection } from './SubjectSection'
 import { MediaDetailsCollectionsSection } from './MediaDetailsCollectionsSection'
 import { SectionHelp } from '../ui/SectionHelp'
 import { isUniversalSubjectLabel } from '../../shared/subjects'
+import { showError } from '../store/toastStore'
 import {
   basenameFromRelativePath,
   dirnameFromRelativePath,
@@ -21,8 +22,11 @@ export function MediaDetailsPanel() {
   const selectedMediaId = useAppStore((s) => s.selectedMediaId)
   const mainView = useAppStore((s) => s.mainView)
   const mediaTagsRevision = useAppStore((s) => s.mediaTagsRevision)
+  const subjectsRevision = useAppStore((s) => s.subjectsRevision)
   const selectTag = useAppStore((s) => s.selectTag)
+  const bumpSubjectsRevision = useAppStore((s) => s.bumpSubjectsRevision)
   const openPreview = useAppStore((s) => s.openPreview)
+  const setSubjectRegionEdit = useAppStore((s) => s.setSubjectRegionEdit)
   const setCropMode = useAppStore((s) => s.setCropMode)
   const setSelectedCollectionId = useAppStore((s) => s.setSelectedCollectionId)
   const setDetailsFocus = useAppStore((s) => s.setDetailsFocus)
@@ -88,7 +92,7 @@ export function MediaDetailsPanel() {
   useEffect(() => {
     if (selectedMediaId) void load(selectedMediaId)
     else setMedia(null)
-  }, [selectedMediaId, mediaTagsRevision, collectionMembersRevision, load])
+  }, [selectedMediaId, mediaTagsRevision, subjectsRevision, collectionMembersRevision, load])
 
   const savedFileNameStem = useMemo(() => {
     if (!media) return ''
@@ -190,8 +194,9 @@ export function MediaDetailsPanel() {
       setConfirmRemoveSubject(null)
       void load(selectedMediaId)
       bumpMediaTagsRevision()
+      bumpSubjectsRevision()
     } catch (e) {
-      console.error(e)
+      showError(e)
       setConfirmRemoveSubject(null)
     }
   }
@@ -207,6 +212,28 @@ export function MediaDetailsPanel() {
     setConfirmRemoveSubject(null)
     setNewSubjectModalKey((k) => k + 1)
     setShowNewSubject(true)
+  }
+
+  const renameSubject = async (subjectId: number, label: string) => {
+    await window.collectionXiewer.subjects.update(subjectId, { label })
+    void load(selectedMediaId)
+    bumpSubjectsRevision()
+  }
+
+  const editSubjectRegion = (subjectId: number, label: string) => {
+    if (mainView !== 'preview') openPreview(selectedMediaId)
+    setCropMode(false)
+    setSubjectRegionEdit({ mediaId: selectedMediaId, subjectId, label })
+  }
+
+  const clearSubjectRegion = async (subjectId: number) => {
+    try {
+      await window.collectionXiewer.subjects.clearRegion(subjectId)
+      void load(selectedMediaId)
+      bumpSubjectsRevision()
+    } catch (e) {
+      showError(e)
+    }
   }
 
   const onSearchTags = (q: string) => window.collectionXiewer.tags.search(q)
@@ -344,6 +371,7 @@ export function MediaDetailsPanel() {
             mediaId={selectedMediaId}
             subject={subject}
             tags={tagsBySubject.get(subject.id) ?? []}
+            croppableMedia={isImage}
             onSelectTag={selectTag}
             onRemoveTag={(tagId, subjectId) => void removeTag(tagId, subjectId)}
             onRemoveSubject={
@@ -353,6 +381,17 @@ export function MediaDetailsPanel() {
             }
             onApplyTag={(tagId, subjectId) => void applyTag(tagId, subjectId)}
             onSearchTags={onSearchTags}
+            onRenameSubject={
+              isUniversalSubjectLabel(subject.label)
+                ? undefined
+                : (subjectId, label) => renameSubject(subjectId, label)
+            }
+            onEditRegion={
+              isUniversalSubjectLabel(subject.label) ? undefined : editSubjectRegion
+            }
+            onClearRegion={
+              isUniversalSubjectLabel(subject.label) ? undefined : (id) => void clearSubjectRegion(id)
+            }
             softSuggestions={suggestionsBySubject.get(subject.id) ?? []}
           />
         ))}
@@ -389,6 +428,7 @@ export function MediaDetailsPanel() {
           onCreated={() => {
             void load(selectedMediaId)
             bumpMediaTagsRevision()
+            bumpSubjectsRevision()
           }}
         />
       )}

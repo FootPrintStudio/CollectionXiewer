@@ -198,6 +198,16 @@ function migrateAppPrefs(database: Database.Database): void {
   `)
 }
 
+function migrateSubjectRegions(database: Database.Database): void {
+  if (!tableExists(database, 'subjects') || columnExists(database, 'subjects', 'region_x')) {
+    return
+  }
+  database.exec(`ALTER TABLE subjects ADD COLUMN region_x REAL`)
+  database.exec(`ALTER TABLE subjects ADD COLUMN region_y REAL`)
+  database.exec(`ALTER TABLE subjects ADD COLUMN region_w REAL`)
+  database.exec(`ALTER TABLE subjects ADD COLUMN region_h REAL`)
+}
+
 function migrateCollectionSortOrder(database: Database.Database): void {
   if (!tableExists(database, 'collections') || columnExists(database, 'collections', 'sort_order')) {
     return
@@ -226,6 +236,7 @@ function migrate(database: Database.Database): void {
   migrateTagSortOrder(database)
   migrateMediaTagSuggestions(database)
   migrateCollectionSortOrder(database)
+  migrateSubjectRegions(database)
   migrateAppPrefs(database)
 
   database.exec(`

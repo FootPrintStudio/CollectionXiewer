@@ -2,6 +2,15 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.1.0 — 2026-05-18
+
+### Added
+- Optional subject regions on preview (images and motion): draw, edit, clear, and toggle visibility
+- Tag drop targets on subject regions; regions appear during tag drag even when hidden
+- Editable subject names in the details panel
+- Distinct colored borders per subject region (transparent interior)
+- Full-resolution preview zoom for standard images (loads originals instead of downscaled previews)
+
 ## 1.0.1 — 2026-05-18
 
 ### Added

@@ -1,6 +1,7 @@
 import { getDb } from '../db/database'
 import { bumpTagGraphEpoch, syncTagClosureEpoch } from './appPrefs'
-import type { Tag, TagConnection, TagExternalLink, MediaTag, MediaTagSuggestion } from '../../shared/types'
+import type { Tag, TagConnection, TagExternalLink, MediaTag, MediaTagSuggestion, SubjectUpdatePatch } from '../../shared/types'
+import { validateCropRect } from '../../shared/cropRect'
 import { canAssignTagToGroup, canReparentTag, getTagSiblings, isDescendantOf } from '../../shared/tagTree'
 import { formatTagLabel, slugifyTag } from '../../shared/tagDisplay'
 import { normalizeTagIcon } from '../../shared/tagIcon'
@@ -479,6 +480,56 @@ export function removeSubject(subjectId: number): void {
   }
   db.prepare(`DELETE FROM media_tags WHERE subject_id = ?`).run(subjectId)
   db.prepare(`DELETE FROM subjects WHERE id = ?`).run(subjectId)
+}
+
+export function updateSubject(subjectId: number, patch: SubjectUpdatePatch): void {
+  const db = getDb()
+  const row = db
+    .prepare(`SELECT * FROM subjects WHERE id = ?`)
+    .get(subjectId) as
+    | {
+        id: number
+        media_id: number
+        label: string
+      }
+    | undefined
+  if (!row) throw new Error('Subject not found.')
+
+  if (patch.label !== undefined) {
+    if (isUniversalSubjectLabel(row.label)) {
+      throw new Error('The Universal subject cannot be renamed.')
+    }
+    const trimmed = patch.label.trim()
+    if (!trimmed) throw new Error('Subject label is required.')
+    if (isUniversalSubjectLabel(trimmed)) {
+      throw new Error('“Universal” is reserved for the default subject.')
+    }
+    const dup = db
+      .prepare(`SELECT id FROM subjects WHERE media_id = ? AND label = ? AND id != ?`)
+      .get(row.media_id, trimmed, subjectId) as { id: number } | undefined
+    if (dup) throw new Error('A subject with that name already exists on this media item.')
+    db.prepare(`UPDATE subjects SET label = ? WHERE id = ?`).run(trimmed, subjectId)
+  }
+
+  if (patch.region !== undefined) {
+    if (isUniversalSubjectLabel(row.label)) {
+      throw new Error('The Universal subject cannot have a region.')
+    }
+    if (patch.region === null) {
+      db.prepare(
+        `UPDATE subjects SET region_x = NULL, region_y = NULL, region_w = NULL, region_h = NULL WHERE id = ?`
+      ).run(subjectId)
+    } else {
+      const rect = validateCropRect(patch.region)
+      db.prepare(
+        `UPDATE subjects SET region_x = ?, region_y = ?, region_w = ?, region_h = ? WHERE id = ?`
+      ).run(rect.x, rect.y, rect.w, rect.h, subjectId)
+    }
+  }
+}
+
+export function clearSubjectRegion(subjectId: number): void {
+  updateSubject(subjectId, { region: null })
 }
 
 function refreshSuggestionsForTagSource(sourceTagId: number): void {
