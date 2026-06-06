@@ -2523,6 +2523,50 @@ body.panel-resize-active * {
   line-height: 1.35;
 }
 
+.tag-connection-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  pointer-events: none;
+}
+
+.tag-connection-modal--floating {
+  position: fixed;
+  margin: 0;
+  width: min(340px, calc(100vw - 1.5rem));
+  max-height: min(85vh, 680px);
+  pointer-events: auto;
+  box-shadow: var(--shadow-dropdown, var(--shadow));
+}
+
+.tag-connection-modal__drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  margin: -1rem -1.1rem 0;
+  padding: 0.85rem 1.1rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tag-connection-modal__drag-handle:active {
+  cursor: grabbing;
+}
+
+.tag-connection-modal__drag-handle .modal-title {
+  margin-bottom: 0.25rem;
+}
+
+.tag-connection-modal__drag-hint {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.tag-connection-modal--floating .modal-hint {
+  margin-top: 0.65rem;
+}
+
 .tag-connection-picker {
   display: flex;
   flex-wrap: wrap;

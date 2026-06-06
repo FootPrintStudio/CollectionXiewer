@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Tag, TagConnection } from '../../shared/types'
 import { formatTagLabel } from '../../shared/tagDisplay'
@@ -11,6 +11,33 @@ import {
 import { tagChipStyle } from '../lib/tagChipStyle'
 import { useResolvedTagColor } from '../hooks/useResolvedTagColor'
 import { TagChipContent } from '../components/TagChipContent'
+import { loadDetailsPanelWidth } from '../lib/panelLayout'
+
+const MODAL_WIDTH = 340
+const MODAL_MARGIN = 12
+
+function defaultModalPosition(): { x: number; y: number } {
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const detailsW = loadDetailsPanelWidth()
+  const panelLeft = w - detailsW
+  let x: number
+  if (MODAL_WIDTH + MODAL_MARGIN * 2 <= detailsW) {
+    x = panelLeft + Math.round((detailsW - MODAL_WIDTH) / 2)
+  } else {
+    x = w - MODAL_WIDTH - MODAL_MARGIN
+  }
+  return clampModalPosition(x, Math.max(MODAL_MARGIN, Math.round(h * 0.1)))
+}
+
+function clampModalPosition(x: number, y: number): { x: number; y: number } {
+  const maxX = Math.max(MODAL_MARGIN, window.innerWidth - MODAL_WIDTH - MODAL_MARGIN)
+  const maxY = Math.max(MODAL_MARGIN, window.innerHeight - 120)
+  return {
+    x: Math.min(Math.max(MODAL_MARGIN, x), maxX),
+    y: Math.min(Math.max(MODAL_MARGIN, y), maxY)
+  }
+}
 
 export interface AddTagConnectionModalProps {
   sourceTag: Tag
@@ -55,8 +82,31 @@ export function AddTagConnectionModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const [pos, setPos] = useState(defaultModalPosition)
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
+    null
+  )
 
   const excludedIds = new Set([sourceTag.id])
+
+  const onDragHandlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+  }, [pos.x, pos.y])
+
+  const onDragHandlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    setPos(
+      clampModalPosition(dragRef.current.origX + dx, dragRef.current.origY + dy)
+    )
+  }, [])
+
+  const onDragHandlePointerUp = useCallback(() => {
+    dragRef.current = null
+  }, [])
 
   useEffect(() => {
     searchRef.current?.focus()
@@ -126,17 +176,26 @@ export function AddTagConnectionModal({
   const kindMeta = TAG_CONNECTION_KIND_META[kind]
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose} role="presentation">
+    <div className="tag-connection-modal-layer" role="presentation">
       <div
-        className="modal-dialog modal-dialog--compact tag-connection-modal"
+        className="modal-dialog modal-dialog--compact tag-connection-modal tag-connection-modal--floating"
+        style={{ left: pos.x, top: pos.y }}
         role="dialog"
         aria-labelledby="tag-connection-modal-title"
-        onClick={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}
       >
-        <h2 id="tag-connection-modal-title" className="modal-title">
-          Connect from {formatTagLabel(sourceTag)}
-        </h2>
+        <div
+          className="tag-connection-modal__drag-handle"
+          onPointerDown={onDragHandlePointerDown}
+          onPointerMove={onDragHandlePointerMove}
+          onPointerUp={onDragHandlePointerUp}
+          onPointerCancel={onDragHandlePointerUp}
+        >
+          <h2 id="tag-connection-modal-title" className="modal-title">
+            Connect from {formatTagLabel(sourceTag)}
+          </h2>
+          <p className="tag-connection-modal__drag-hint">Drag to move · gallery stays visible behind</p>
+        </div>
         <p className="modal-hint">
           Outgoing connections from this tag. Hard links auto-apply on media; soft links appear as
           suggestions.

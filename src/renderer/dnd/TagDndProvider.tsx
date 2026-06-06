@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
@@ -41,6 +42,7 @@ import {
 import { isBoardDropId } from './boardDnd'
 import { useBoardStore } from '../store/boardStore'
 import { showError } from '../store/toastStore'
+import { createPointerScopedAutoScroll } from './pointerScopedAutoScroll'
 
 type ReparentTarget =
   | { kind: 'parent'; parentId: number | null }
@@ -61,6 +63,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
   const reparentSideEffectsRef = useRef<((newParentId: number | null) => void) | null>(null)
 
   const { arm, clear, isPending, isReady, getCommittedTarget } = useDelayedDropTarget(TAG_HOLD_MS)
+  const pointerAutoScroll = useMemo(() => createPointerScopedAutoScroll(), [])
 
   const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags])
   const overlayColor = useResolvedTagColor(draggingTag)
@@ -112,6 +115,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
   )
 
   const onDragStart = (event: DragStartEvent) => {
+    pointerAutoScroll.trackDragStart(event)
     const data = event.active.data.current as
       | TagDragData
       | MediaTagDragData
@@ -133,6 +137,10 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
     clear()
   }
 
+  const onDragMove = (event: DragMoveEvent) => {
+    pointerAutoScroll.trackDragMove(event)
+  }
+
   const onDragOver = (event: DragOverEvent) => {
     const draggedId = parseTagDragId(event.active.id)
     const overId = event.over ? String(event.over.id) : null
@@ -140,6 +148,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
   }
 
   const onDragEnd = async (event: DragEndEvent) => {
+    pointerAutoScroll.clearPointer()
     const activeData = event.active.data.current as
       | TagDragData
       | MediaTagDragData
@@ -257,6 +266,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
   }
 
   const onDragCancel = () => {
+    pointerAutoScroll.clearPointer()
     setDraggingTag(null)
     setDraggingMediaTag(null)
     setDraggingMediaIds([])
@@ -284,7 +294,9 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
         sensors={sensors}
         collisionDetection={galleryCollisionDetection}
         modifiers={[snapCenterToCursor]}
+        autoScroll={pointerAutoScroll.autoScroll}
         onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragOver={onDragOver}
         onDragEnd={(e) => void onDragEnd(e)}
         onDragCancel={onDragCancel}

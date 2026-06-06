@@ -2,6 +2,12 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.0.1 — 2026-05-18
+
+### Added
+- Floating, draggable tag connection modal (no dark backdrop; opens over details panel)
+- Pointer-scoped drag auto-scroll so only the sidebar under the cursor scrolls
+
 ## 1.0.0 — 2026-05-18
 
 First stable release for Linux personal archive workflows.
