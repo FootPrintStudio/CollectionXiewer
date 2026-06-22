@@ -18,7 +18,6 @@ import * as boards from '../services/boards'
 import type { BoardDocument } from '../../shared/boardSchema'
 import { getDb, getDbPath } from '../db/database'
 import { backupDatabase, getDataDir, openDataFolder } from '../services/dbBackup'
-import { exportCropped } from '../services/crop'
 import { indexFile } from '../services/indexer'
 import {
   backfillExoticRasterDimension,
@@ -84,6 +83,20 @@ export function registerIpcHandlers(): void {
     if (!media) return null
     if (media.kind === 'motion') return null
     const buf = await thumbs.generatePreviewBuffer(media.absolute_path, maxDim, mediaId, media.kind)
+    return buf?.toString('base64') ?? null
+  })
+
+  ipcMain.handle('preview:getFull', async (_e, mediaId: number, maxDim: number) => {
+    const media = mediaQuery.getMedia(mediaId)
+    if (!media) return null
+    if (media.kind === 'motion') return null
+    const buf = await thumbs.generatePreviewBuffer(
+      media.absolute_path,
+      maxDim,
+      mediaId,
+      media.kind,
+      { skipCrop: true }
+    )
     return buf?.toString('base64') ?? null
   })
 
@@ -267,19 +280,20 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle('crop:get', (_e, mediaId: number) => crop.getCrop(mediaId))
-  ipcMain.handle('crop:set', (_e, mediaId: number, rect: CropRect) => crop.setCrop(mediaId, rect))
+  ipcMain.handle('crop:set', async (_e, mediaId: number, rect: CropRect) =>
+    crop.applyCropToOriginal(mediaId, rect)
+  )
   ipcMain.handle('crop:clear', (_e, mediaId: number) => crop.clearCrop(mediaId))
   ipcMain.handle('crop:export', async (_e, mediaId: number) => {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) throw new Error('No media')
-    const c = crop.getCrop(mediaId)
-    if (!c) throw new Error('No crop')
     const result = await dialog.showSaveDialog(mainWindow!, {
       defaultPath: media.relative_path,
-      filters: [{ name: 'Images', extensions: ['jpg', 'png', 'webp'] }]
+      filters: [{ name: 'Images', extensions: ['jpg', 'png', 'webp', 'gif'] }]
     })
     if (result.canceled || !result.filePath) return null
-    await exportCropped(media.absolute_path, c, result.filePath, media.kind)
+    const { copyFile } = await import('node:fs/promises')
+    await copyFile(media.absolute_path, result.filePath)
     const root = getDb().prepare(`SELECT * FROM watch_roots WHERE id = ?`).get(media.root_id) as {
       id: number
       path: string

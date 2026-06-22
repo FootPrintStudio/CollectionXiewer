@@ -34,6 +34,12 @@ function evict(): void {
   }
 }
 
+export function invalidateThumbnailCache(absolutePath: string): void {
+  for (const key of lru.keys()) {
+    if (key.includes(absolutePath)) lru.delete(key)
+  }
+}
+
 function store(key: string, buf: Buffer): Buffer {
   lru.set(key, { buf, at: Date.now() })
   evict()
@@ -69,9 +75,10 @@ export async function generateThumbnail(
   absolutePath: string,
   maxSize: number,
   mediaId?: number,
-  kind?: MediaKind
+  kind?: MediaKind,
+  options?: { skipCrop?: boolean }
 ): Promise<Buffer | null> {
-  const crop = mediaId ? getCrop(mediaId) : null
+  const crop = mediaId && !options?.skipCrop ? getCrop(mediaId) : null
   const videoSeekMs =
     kind === 'video' && mediaId ? getPosterTimeMs(mediaId) : null
   const key = cacheKey(absolutePath, maxSize, crop, videoSeekMs)
@@ -143,7 +150,8 @@ export async function generatePreviewBuffer(
   absolutePath: string,
   maxDim: number,
   mediaId?: number,
-  kind?: MediaKind
+  kind?: MediaKind,
+  options?: { skipCrop?: boolean }
 ): Promise<Buffer | null> {
-  return generateThumbnail(absolutePath, maxDim, mediaId, kind)
+  return generateThumbnail(absolutePath, maxDim, mediaId, kind, options)
 }

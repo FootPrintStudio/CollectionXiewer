@@ -8,7 +8,7 @@ import { useTagDnd } from '../../dnd/TagDndContext'
 import { ZoomablePreviewImage } from '../../components/ZoomablePreviewImage'
 import { SubjectRegionOverlay } from '../../components/SubjectRegionOverlay'
 import { SubjectRegionEditor } from '../../components/SubjectRegionEditor'
-import { resolvePreviewSrc } from '../../lib/previewSource'
+import { resolveCropEditorSrc, resolvePreviewSrc } from '../../lib/previewSource'
 import { mediaUrlFromPath } from '../../lib/fileUrl'
 import { MarqueeCropEditor } from '../../components/MarqueeCropEditor'
 import { VideoPreviewPlayer } from '../../components/VideoPreviewPlayer'
@@ -33,8 +33,8 @@ export function MediaPreviewer() {
 
   const [media, setMedia] = useState<MediaItem | null>(null)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
+  const [cropEditorSrc, setCropEditorSrc] = useState<string | null>(null)
   const [cropRect, setCropRect] = useState<CropRect | null>(null)
-  const [hasCrop, setHasCrop] = useState(false)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [regionEditRect, setRegionEditRect] = useState<CropRect | null>(null)
 
@@ -62,17 +62,17 @@ export function MediaPreviewer() {
     if (cancelled?.()) return
     setMedia(m)
     if (!m) {
-      setHasCrop(false)
       setSubjects([])
       setPreviewSrc(null)
+      setCropEditorSrc(null)
       return
     }
-    const savedCrop = await window.collectionXiewer.crop.get(id)
-    if (cancelled?.()) return
-    setHasCrop(!!savedCrop)
-    const src = await resolvePreviewSrc(m, !!savedCrop)
+    const src = await resolvePreviewSrc(m)
     if (cancelled?.()) return
     setPreviewSrc(src)
+    const editorSrc = await resolveCropEditorSrc(m)
+    if (cancelled?.()) return
+    setCropEditorSrc(editorSrc)
     await window.collectionXiewer.subjects.ensure(id)
     if (cancelled?.()) return
     setSubjects((await window.collectionXiewer.subjects.list(id)) as Subject[])
@@ -148,11 +148,18 @@ export function MediaPreviewer() {
 
   const saveCrop = async () => {
     if (!media || !cropRect) return
-    await window.collectionXiewer.crop.set(media.id, cropRect)
-    setCropMode(false)
-    setCropRect(null)
-    setHasCrop(true)
-    void load(media.id)
+    try {
+      const updated = await window.collectionXiewer.crop.set(media.id, cropRect)
+      setCropMode(false)
+      setCropRect(null)
+      setMedia(updated)
+      const src = await resolvePreviewSrc(updated)
+      setPreviewSrc(src)
+      setCropEditorSrc(await resolveCropEditorSrc(updated))
+      void useAppStore.getState().refreshMedia()
+    } catch (e) {
+      showError(e)
+    }
   }
 
   const saveSubjectRegion = async () => {
@@ -250,7 +257,7 @@ export function MediaPreviewer() {
         {cropMode && (
           <>
             <span className="previewer-crop-hint">
-              Drag to select · move inside · resize handles
+              Drag to select · move inside · resize handles · applies to original file
             </span>
             <button
               type="button"
@@ -258,18 +265,7 @@ export function MediaPreviewer() {
               disabled={!cropRect}
               onClick={() => void saveCrop()}
             >
-              Save crop
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void window.collectionXiewer.crop.clear(media.id)
-                setCropMode(false)
-                setCropRect(null)
-                void load(media.id)
-              }}
-            >
-              Reset
+              Apply crop
             </button>
           </>
         )}
@@ -300,11 +296,6 @@ export function MediaPreviewer() {
             </button>
           </>
         )}
-        {hasCrop ? (
-          <button type="button" onClick={() => void window.collectionXiewer.crop.export(media.id)}>
-            Export crop
-          </button>
-        ) : null}
         <button type="button" onClick={() => window.collectionXiewer.fs.reveal(media.id)}>
           Reveal
         </button>
@@ -362,13 +353,9 @@ export function MediaPreviewer() {
               onRectChange={setRegionEditRect}
             />
           </div>
-        ) : cropMode && previewSrc && isCroppable ? (
+        ) : cropMode && cropEditorSrc && isCroppable ? (
           <div className="crop-container">
-            <MarqueeCropEditor
-              src={previewSrc}
-              mediaId={media.id}
-              onCropChange={setCropRect}
-            />
+            <MarqueeCropEditor src={cropEditorSrc} onCropChange={setCropRect} />
           </div>
         ) : media.kind === 'video' ? (
           <VideoPreviewPlayer

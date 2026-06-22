@@ -22,6 +22,8 @@ export interface MediaItem {
   mtime: number
   indexed_at: string
   missing: number
+  /** Legacy virtual crop (pending migration); omitted once baked into the file. */
+  crop?: CropRect
 }
 
 export interface MediaCrop {

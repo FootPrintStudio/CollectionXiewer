@@ -86,8 +86,8 @@ export function computeColumnWidth(
   return (containerWidth - gap * (columnCount - 1)) / columnCount
 }
 
-export function mediaAspectRatio(item: Pick<MediaItem, 'width' | 'height' | 'kind'>): number {
-  return motionAwareAspectRatio(item.width, item.height, item.kind)
+export function mediaAspectRatio(item: Pick<MediaItem, 'width' | 'height' | 'kind' | 'crop'>): number {
+  return motionAwareAspectRatio(item.width, item.height, item.kind, item.crop)
 }
 
 /** Rounded sizes for thumb IPC/cache; must be >= display pixels × DPR. */

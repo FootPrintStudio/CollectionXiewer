@@ -364,7 +364,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         const mediaId = mediaIds[i]!
         const media = await window.collectionXiewer.media.get(mediaId)
         const aspect = media
-          ? mediaAspectRatio(media.width, media.height, media.kind)
+          ? mediaAspectRatio(media.width, media.height, media.kind, media.crop)
           : 4 / 3
         const width = baseWidth
         const height = width / aspect

@@ -40,7 +40,6 @@ export function MediaDetailsPanel() {
   const [media, setMedia] = useState<MediaItem | null>(null)
   const [fileNameStem, setFileNameStem] = useState('')
   const [fileNameError, setFileNameError] = useState<string | null>(null)
-  const [hasCrop, setHasCrop] = useState(false)
   const [memberCollections, setMemberCollections] = useState<Collection[]>([])
   const [mediaTags, setMediaTags] = useState<Array<{ tag: Tag; subject_id: number | null }>>([])
   const [suggestions, setSuggestions] = useState<MediaTagSuggestion[]>([])
@@ -63,8 +62,6 @@ export function MediaDetailsPanel() {
     setFileNameStem(splitFilename(basenameFromRelativePath(m.relative_path)).stem)
     setFileNameError(null)
 
-    const crop = await window.collectionXiewer.crop.get(id)
-    setHasCrop(crop != null)
     setMemberCollections(await window.collectionXiewer.collections.forMedia(id))
 
     const mt = await window.collectionXiewer.mediaTags.list(id)
@@ -305,10 +302,6 @@ export function MediaDetailsPanel() {
             <dt>Indexed</dt>
             <dd>{formatTimestamp(media.indexed_at)}</dd>
           </div>
-          <div>
-            <dt>Crop</dt>
-            <dd>{hasCrop ? 'Custom crop saved' : 'Full image'}</dd>
-          </div>
         </dl>
       </section>
 
@@ -322,17 +315,12 @@ export function MediaDetailsPanel() {
           ) : null}
           {isImage ? (
             <button type="button" onClick={openCropEditor}>
-              {hasCrop ? 'Edit crop' : 'Crop'}
+              Crop
             </button>
           ) : null}
           <button type="button" onClick={() => window.collectionXiewer.fs.reveal(media.id)}>
             Reveal in folder
           </button>
-          {hasCrop ? (
-            <button type="button" onClick={() => void window.collectionXiewer.crop.export(media.id)}>
-              Export crop
-            </button>
-          ) : null}
           <button type="button" className="danger" onClick={() => setConfirmDeleteMedia(true)}>
             Delete file
           </button>

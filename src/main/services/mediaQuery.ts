@@ -1,7 +1,7 @@
 import { getDb } from '../db/database'
 import type { MediaItem, MediaListQuery, MediaSortOrder } from '../../shared/types'
 import { mediaSortOrderClause } from '../../shared/mediaSort'
-import { enrichMedia } from './mediaPaths'
+import { enrichMedia, enrichMediaWithCrop } from './mediaPaths'
 import { searchMediaWikiFts } from './wikiFts'
 import type { SearchNode } from '../../shared/searchAst'
 
@@ -79,9 +79,11 @@ export function listMedia(query: MediaListQuery = {}): MediaItem[] {
 
   const sql = `
     SELECT m.id, m.root_id, m.relative_path, m.mime, m.kind, m.width, m.height,
-           m.duration_ms, m.mtime, m.indexed_at, m.missing, r.path AS root_path
+           m.duration_ms, m.mtime, m.indexed_at, m.missing, r.path AS root_path,
+           c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
     FROM media_items m
     JOIN watch_roots r ON r.id = m.root_id
+    LEFT JOIN media_crop c ON c.media_id = m.id
     WHERE ${conditions.join(' AND ')}
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
@@ -89,20 +91,38 @@ export function listMedia(query: MediaListQuery = {}): MediaItem[] {
   params.push(limit, offset)
 
   const rows = db.prepare(sql).all(...params) as Array<
-    Omit<MediaItem, 'absolute_path'> & { root_path: string }
+    Omit<MediaItem, 'absolute_path'> & {
+      root_path: string
+      crop_x?: number | null
+      crop_y?: number | null
+      crop_w?: number | null
+      crop_h?: number | null
+    }
   >
-  return rows.map((r) => enrichMedia(r, r.root_path))
+  return rows.map((r) => enrichMediaWithCrop(r))
 }
 
 export function getMedia(id: number): MediaItem | null {
   const row = getDb()
     .prepare(
-      `SELECT m.*, r.path AS root_path FROM media_items m
-       JOIN watch_roots r ON r.id = m.root_id WHERE m.id = ?`
+      `SELECT m.*, r.path AS root_path,
+              c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
+       FROM media_items m
+       JOIN watch_roots r ON r.id = m.root_id
+       LEFT JOIN media_crop c ON c.media_id = m.id
+       WHERE m.id = ?`
     )
-    .get(id) as (Omit<MediaItem, 'absolute_path'> & { root_path: string }) | undefined
+    .get(id) as
+    | (Omit<MediaItem, 'absolute_path'> & {
+        root_path: string
+        crop_x?: number | null
+        crop_y?: number | null
+        crop_w?: number | null
+        crop_h?: number | null
+      })
+    | undefined
   if (!row) return null
-  return enrichMedia(row, row.root_path)
+  return enrichMediaWithCrop(row)
 }
 
 export function runSearchAst(
@@ -118,14 +138,25 @@ export function runSearchAst(
   const placeholders = ids.map(() => '?').join(',')
   const rows = getDb()
     .prepare(
-      `SELECT m.*, r.path AS root_path FROM media_items m
+      `SELECT m.*, r.path AS root_path,
+              c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
+       FROM media_items m
        JOIN watch_roots r ON r.id = m.root_id
+       LEFT JOIN media_crop c ON c.media_id = m.id
        WHERE m.id IN (${placeholders}) AND m.missing = 0
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`
     )
-    .all(...ids, limit, offset) as Array<Omit<MediaItem, 'absolute_path'> & { root_path: string }>
-  return rows.map((r) => enrichMedia(r, r.root_path))
+    .all(...ids, limit, offset) as Array<
+      Omit<MediaItem, 'absolute_path'> & {
+        root_path: string
+        crop_x?: number | null
+        crop_y?: number | null
+        crop_w?: number | null
+        crop_h?: number | null
+      }
+    >
+  return rows.map((r) => enrichMediaWithCrop(r))
 }
 
 /** Media IDs matching a search AST (empty AND root = all non-missing media). */

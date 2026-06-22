@@ -11,6 +11,7 @@ import { installMediaProtocolHandler, registerMediaScheme } from './protocol/med
 import { stopAllWatchers } from './services/watcher'
 import { initWatchers } from './services/roots'
 import { rebuildAllClosure } from './services/tags'
+import { migrateVirtualCrops } from './services/crop'
 import { ensureTagClosureCurrent } from './services/appPrefs'
 
 registerMediaScheme()
@@ -54,10 +55,11 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   installMediaProtocolHandler()
   getDb()
   ensureTagClosureCurrent(rebuildAllClosure)
+  await migrateVirtualCrops()
   registerIpcHandlers()
   initUpdater()
   initWatchers()

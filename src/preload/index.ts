@@ -3,6 +3,7 @@ import type {
   CropRect,
   Identifier,
   IdentifierBadge,
+  MediaItem,
   MediaListQuery,
   MediaSortOrder,
   MediaTagSuggestion,
@@ -33,7 +34,9 @@ const api = {
     get: (mediaId: number, size: number) => ipcRenderer.invoke('thumb:get', mediaId, size) as Promise<string | null>
   },
   preview: {
-    get: (mediaId: number, maxDim: number) => ipcRenderer.invoke('preview:get', mediaId, maxDim) as Promise<string | null>
+    get: (mediaId: number, maxDim: number) => ipcRenderer.invoke('preview:get', mediaId, maxDim) as Promise<string | null>,
+    getFull: (mediaId: number, maxDim: number) =>
+      ipcRenderer.invoke('preview:getFull', mediaId, maxDim) as Promise<string | null>
   },
   video: {
     setPoster: (mediaId: number, data: Uint8Array, timeMs: number) =>
@@ -159,7 +162,8 @@ const api = {
   },
   crop: {
     get: (mediaId: number) => ipcRenderer.invoke('crop:get', mediaId),
-    set: (mediaId: number, rect: CropRect) => ipcRenderer.invoke('crop:set', mediaId, rect),
+    set: (mediaId: number, rect: CropRect) =>
+      ipcRenderer.invoke('crop:set', mediaId, rect) as Promise<MediaItem>,
     clear: (mediaId: number) => ipcRenderer.invoke('crop:clear', mediaId),
     export: (mediaId: number) => ipcRenderer.invoke('crop:export', mediaId)
   },

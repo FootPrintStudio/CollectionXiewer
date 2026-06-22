@@ -62,7 +62,7 @@ export function ThumbCell({
     : {
         width: width ?? '100%',
         height: height ?? width ?? 160,
-        aspectRatio: width && height ? undefined : mediaAspectRatioCss(item.width, item.height, item.kind)
+        aspectRatio: width && height ? undefined : mediaAspectRatioCss(item.width, item.height, item.kind, item.crop)
       }
 
   const setRefs = (el: HTMLDivElement | null) => {

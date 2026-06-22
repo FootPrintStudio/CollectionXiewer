@@ -30,7 +30,7 @@ function MediaItemView({
       const media = await window.collectionXiewer.media.get(item.mediaId)
       if (cancelled) return
       if (media) {
-        const aspect = mediaAspectRatio(media.width, media.height, media.kind)
+        const aspect = mediaAspectRatio(media.width, media.height, media.kind, media.crop)
         onAspectKnown(aspect, false)
       }
       let b64 = await window.collectionXiewer.preview.get(item.mediaId, 1200)

@@ -543,7 +543,9 @@ function refreshSuggestionsForTagSource(sourceTagId: number): void {
   }
 }
 
-/** Rebuild persisted soft suggestions for one subject from applied tags + soft connections. */
+/** Rebuild persisted soft suggestions for one subject from applied tags + soft connections.
+ *  Suppresses a soft suggestion when the tag is already applied on this subject, on Universal
+ *  (whole-file scope), or — when rebuilding Universal — on any custom subject. */
 export function refreshSubjectSuggestions(mediaId: number, subjectId: number): void {
   const db = getDb()
   db.prepare(`DELETE FROM media_tag_suggestions WHERE media_id = ? AND subject_id = ?`).run(
@@ -567,18 +569,36 @@ export function refreshSubjectSuggestions(mediaId: number, subjectId: number): v
                WHERE s.media_id = mt.media_id
                  AND LOWER(TRIM(s.label)) = LOWER(?)
              )
+             OR (
+               mt.subject_id IN (
+                 SELECT s.id FROM subjects s
+                 WHERE s.media_id = mt.media_id
+                   AND LOWER(TRIM(s.label)) = LOWER(?)
+               )
+               AND applied.subject_id IN (
+                 SELECT s.id FROM subjects s
+                 WHERE s.media_id = mt.media_id
+                   AND LOWER(TRIM(s.label)) != LOWER(?)
+               )
+             )
            )
        )`
-  ).run(mediaId, subjectId, UNIVERSAL_SUBJECT_LABEL)
+  ).run(mediaId, subjectId, UNIVERSAL_SUBJECT_LABEL, UNIVERSAL_SUBJECT_LABEL, UNIVERSAL_SUBJECT_LABEL)
 }
 
 export function refreshMediaSuggestions(mediaId: number): void {
-  const rows = getDb()
+  const db = getDb()
+  const subjectIds = new Set<number>()
+  const rows = db
     .prepare(
       `SELECT DISTINCT subject_id FROM media_tags WHERE media_id = ? AND subject_id IS NOT NULL`
     )
     .all(mediaId) as { subject_id: number }[]
   for (const { subject_id } of rows) {
+    subjectIds.add(subject_id)
+  }
+  subjectIds.add(ensureUniversalSubject(mediaId))
+  for (const subject_id of subjectIds) {
     refreshSubjectSuggestions(mediaId, subject_id)
   }
 }
