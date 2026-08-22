@@ -2,6 +2,12 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.3.1 — 2026-08-22
+
+### Fixed
+- Soft tag suggestions are fulfilled when a parent or child of the suggested tag is already applied
+- Ensure GitHub release includes AppImage and updater metadata (`latest-linux.yml`) for in-app updates
+
 ## 1.3.0 — 2026-08-22
 
 ### Added

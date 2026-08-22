@@ -544,8 +544,9 @@ function refreshSuggestionsForTagSource(sourceTagId: number): void {
 }
 
 /** Rebuild persisted soft suggestions for one subject from applied tags + soft connections.
- *  Suppresses a soft suggestion when the tag is already applied on this subject, on Universal
- *  (whole-file scope), or — when rebuilding Universal — on any custom subject. */
+ *  Suppresses a soft suggestion when the suggested tag — or any parent/child in the tag tree —
+ *  is already applied on this subject, on Universal (whole-file scope), or — when rebuilding
+ *  Universal — on any custom subject. */
 export function refreshSubjectSuggestions(mediaId: number, subjectId: number): void {
   const db = getDb()
   db.prepare(`DELETE FROM media_tag_suggestions WHERE media_id = ? AND subject_id = ?`).run(
@@ -561,7 +562,11 @@ export function refreshSubjectSuggestions(mediaId: number, subjectId: number): v
        AND NOT EXISTS (
          SELECT 1 FROM media_tags applied
          WHERE applied.media_id = mt.media_id
-           AND applied.tag_id = tc.target_tag_id
+           AND EXISTS (
+             SELECT 1 FROM tag_closure related
+             WHERE (related.ancestor_id = applied.tag_id AND related.descendant_id = tc.target_tag_id)
+                OR (related.ancestor_id = tc.target_tag_id AND related.descendant_id = applied.tag_id)
+           )
            AND (
              applied.subject_id = mt.subject_id
              OR applied.subject_id IN (
