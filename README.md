@@ -98,6 +98,24 @@ On Ubuntu 24.04+ without FUSE, either install `libfuse2t64` or run:
 ./CollectionXiewer-*.AppImage --appimage-extract-and-run
 ```
 
+## Local API (Oculus / external tools)
+
+While CollectionXiewer is running, a **loopback-only** HTTP API listens on `http://127.0.0.1:47821`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | `{ ok, version, service }` |
+| `GET /search?q=…&limit=500&offset=0&sort=name` | Run the same search language as the UI. Optional `sort`: `name`, `date_added`, `date_modified`. |
+| `GET /file/:id` | Stream media bytes for a library item id (for Obsidian / Oculus tiles). |
+
+Search responses include `id`, `path`, `name`, `relative_path`, `kind`, `mtime`, `indexed_at`, `width`, `height`. Invalid queries return HTTP 400 with an error message.
+
+Example:
+
+```bash
+curl -s 'http://127.0.0.1:47821/search?q=tag:hero%20kind:image&limit=24'
+```
+
 ## Data
 
 - SQLite database: `~/.config/CollectionXiewer/library.db`

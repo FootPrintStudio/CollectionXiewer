@@ -2,6 +2,11 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.3.0 — 2026-08-22
+
+### Added
+- Loopback HTTP API on `127.0.0.1:47821` for external tools (Oculus): `/health`, `/search`, `/file/:id`
+
 ## 1.1.1 — 2026-05-18
 
 ### Fixed

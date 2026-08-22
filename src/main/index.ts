@@ -13,6 +13,7 @@ import { initWatchers } from './services/roots'
 import { rebuildAllClosure } from './services/tags'
 import { migrateVirtualCrops } from './services/crop'
 import { ensureTagClosureCurrent } from './services/appPrefs'
+import { startLocalApi, stopLocalApi } from './services/localApi'
 
 registerMediaScheme()
 
@@ -61,6 +62,7 @@ app.whenReady().then(async () => {
   ensureTagClosureCurrent(rebuildAllClosure)
   await migrateVirtualCrops()
   registerIpcHandlers()
+  startLocalApi()
   initUpdater()
   initWatchers()
   createWindow()
@@ -71,6 +73,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  stopLocalApi()
   stopAllWatchers()
   closeDb()
 })
