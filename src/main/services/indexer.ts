@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { extname, relative } from 'node:path'
+import { extname, join, relative } from 'node:path'
 import mime from 'mime-types'
 import { getSharp } from '../lib/lazyNative'
 import { readGifLogicalSize } from '../lib/motionFrame'
@@ -64,6 +65,24 @@ export async function indexFile(
   if (rel.startsWith('..')) return null
 
   const st = await stat(absoluteFilePath)
+  const db = getDb()
+  const existing = db
+    .prepare(
+      `SELECT id, root_id, relative_path, mime, kind, width, height, duration_ms, mtime, indexed_at, missing
+       FROM media_items WHERE root_id = ? AND relative_path = ?`
+    )
+    .get(rootId, rel) as (Omit<MediaItem, 'absolute_path'> & { mtime: number }) | undefined
+
+  if (
+    existing &&
+    existing.missing === 0 &&
+    existing.mtime === st.mtimeMs &&
+    existing.width != null &&
+    existing.height != null
+  ) {
+    return enrichMedia(existing, rootPath)
+  }
+
   let width: number | null = null
   let height: number | null = null
   let durationMs: number | null = null
@@ -109,7 +128,6 @@ export async function indexFile(
     }
   }
 
-  const db = getDb()
   const now = new Date().toISOString()
   db.prepare(
     `INSERT INTO media_items (root_id, relative_path, mime, kind, width, height, duration_ms, mtime, indexed_at, missing)
@@ -141,7 +159,38 @@ export function markMissing(rootId: number, relativePath: string): void {
     .run(rootId, relativePath)
 }
 
+/** Soft-mark DB rows whose files vanished while the app was closed. */
+export function reconcileMissingMedia(): number {
+  const rows = getDb()
+    .prepare(
+      `SELECT m.root_id, m.relative_path, r.path AS root_path
+       FROM media_items m
+       JOIN watch_roots r ON r.id = m.root_id
+       WHERE m.missing = 0`
+    )
+    .all() as Array<{ root_id: number; relative_path: string; root_path: string }>
+
+  let marked = 0
+  for (const row of rows) {
+    const abs = join(row.root_path, row.relative_path)
+    if (!existsSync(abs)) {
+      markMissing(row.root_id, row.relative_path)
+      marked++
+    }
+  }
+  return marked
+}
+
 export function removeMedia(rootId: number, relativePath: string): void {
+  const row = getDb()
+    .prepare(`SELECT id FROM media_items WHERE root_id = ? AND relative_path = ?`)
+    .get(rootId, relativePath) as { id: number } | undefined
+  if (row) {
+    // Lazy import to avoid circular deps with thumbs/poster paths.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { clearPoster } = require('./videoPoster') as typeof import('./videoPoster')
+    clearPoster(row.id)
+  }
   getDb()
     .prepare(`DELETE FROM media_items WHERE root_id = ? AND relative_path = ?`)
     .run(rootId, relativePath)

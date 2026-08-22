@@ -52,8 +52,9 @@ export function MediaDetailsPanel() {
   } | null>(null)
   const [confirmDeleteMedia, setConfirmDeleteMedia] = useState(false)
 
-  const load = useCallback(async (id: number) => {
+  const load = useCallback(async (id: number, cancelled?: () => boolean) => {
     const m = await window.collectionXiewer.media.get(id)
+    if (cancelled?.()) return
     if (!m) {
       setMedia(null)
       return
@@ -62,9 +63,12 @@ export function MediaDetailsPanel() {
     setFileNameStem(splitFilename(basenameFromRelativePath(m.relative_path)).stem)
     setFileNameError(null)
 
-    setMemberCollections(await window.collectionXiewer.collections.forMedia(id))
+    const members = await window.collectionXiewer.collections.forMedia(id)
+    if (cancelled?.()) return
+    setMemberCollections(members)
 
     const mt = await window.collectionXiewer.mediaTags.list(id)
+    if (cancelled?.()) return
     setMediaTags(
       mt
         .filter((row: { tag?: Tag }) => row.tag)
@@ -73,9 +77,13 @@ export function MediaDetailsPanel() {
           subject_id: row.subject_id
         }))
     )
-    setSuggestions(await window.collectionXiewer.mediaTags.suggestions(id))
+    const sug = await window.collectionXiewer.mediaTags.suggestions(id)
+    if (cancelled?.()) return
+    setSuggestions(sug)
     await window.collectionXiewer.subjects.ensure(id)
+    if (cancelled?.()) return
     const list = (await window.collectionXiewer.subjects.list(id)) as Subject[]
+    if (cancelled?.()) return
     setSubjects(
       [...list].sort((a, b) => {
         const aU = isUniversalSubjectLabel(a.label) ? 0 : 1
@@ -92,8 +100,12 @@ export function MediaDetailsPanel() {
       setSubjects([])
       return
     }
+    let cancelled = false
     setSubjects([])
-    void load(selectedMediaId)
+    void load(selectedMediaId, () => cancelled)
+    return () => {
+      cancelled = true
+    }
   }, [selectedMediaId, mediaTagsRevision, subjectsRevision, collectionMembersRevision, load])
 
   const savedFileNameStem = useMemo(() => {
@@ -173,13 +185,11 @@ export function MediaDetailsPanel() {
 
   const applyTag = async (tagId: number, subjectId: number) => {
     await window.collectionXiewer.mediaTags.apply(selectedMediaId, tagId, subjectId)
-    void load(selectedMediaId)
     bumpMediaTagsRevision()
   }
 
   const removeTag = async (tagId: number, subjectId: number) => {
     await window.collectionXiewer.mediaTags.remove(selectedMediaId, tagId, subjectId)
-    void load(selectedMediaId)
     bumpMediaTagsRevision()
   }
 
@@ -194,7 +204,6 @@ export function MediaDetailsPanel() {
     try {
       await window.collectionXiewer.subjects.remove(subjectId)
       setConfirmRemoveSubject(null)
-      void load(selectedMediaId)
       bumpMediaTagsRevision()
       bumpSubjectsRevision()
     } catch (e) {
@@ -218,7 +227,6 @@ export function MediaDetailsPanel() {
 
   const renameSubject = async (subjectId: number, label: string) => {
     await window.collectionXiewer.subjects.update(subjectId, { label })
-    void load(selectedMediaId)
     bumpSubjectsRevision()
   }
 
@@ -231,7 +239,6 @@ export function MediaDetailsPanel() {
   const clearSubjectRegion = async (subjectId: number) => {
     try {
       await window.collectionXiewer.subjects.clearRegion(subjectId)
-      void load(selectedMediaId)
       bumpSubjectsRevision()
     } catch (e) {
       showError(e)
@@ -419,7 +426,6 @@ export function MediaDetailsPanel() {
           existingLabels={subjects.map((s) => s.label)}
           onClose={() => setShowNewSubject(false)}
           onCreated={() => {
-            void load(selectedMediaId)
             bumpMediaTagsRevision()
             bumpSubjectsRevision()
           }}

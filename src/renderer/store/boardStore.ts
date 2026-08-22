@@ -54,6 +54,8 @@ interface BoardState {
   patchDocument: (patch: Partial<BoardDocument>) => void
   setItems: (items: BoardItem[]) => void
   updateItem: (id: string, patch: Partial<BoardItem>) => void
+  /** Apply several item patches in one document write (e.g. end of multi-select drag). */
+  updateItems: (patches: Array<{ id: string; patch: Partial<BoardItem> }>) => void
   removeSelected: () => void
   duplicateSelected: () => void
   addMediaItems: (mediaIds: number[], at: { x: number; y: number }) => void
@@ -308,6 +310,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const items = doc.items.map((item) =>
       item.id === id ? ({ ...item, ...patch } as BoardItem) : item
     )
+    set({ document: { ...doc, items }, dirty: true })
+    get().queueSave()
+  },
+
+  updateItems: (patches) => {
+    const doc = get().document
+    if (!doc || patches.length === 0) return
+    const byId = new Map(patches.map((p) => [p.id, p.patch]))
+    const items = doc.items.map((item) => {
+      const patch = byId.get(item.id)
+      return patch ? ({ ...item, ...patch } as BoardItem) : item
+    })
     set({ document: { ...doc, items }, dirty: true })
     get().queueSave()
   },

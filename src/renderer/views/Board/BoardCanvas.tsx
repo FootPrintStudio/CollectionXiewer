@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useDroppable } from '@dnd-kit/core'
-import type { BoardItem } from '../../../shared/boardSchema'
+import type { BoardCamera, BoardItem } from '../../../shared/boardSchema'
 import { BOARD_DROP_ID } from '../../dnd/boardDnd'
 import { rectsIntersect, screenToWorld, itemRect } from '../../lib/boardLayout'
 import { useBoardStore } from '../../store/boardStore'
@@ -13,18 +14,28 @@ const ZOOM_STEP = 0.1
 
 type DragMode =
   | { kind: 'pan'; startX: number; startY: number; camX: number; camY: number }
-  | { kind: 'move'; ids: string[]; startX: number; startY: number; origins: Map<string, { x: number; y: number }> }
+  | {
+      kind: 'move'
+      ids: string[]
+      startX: number
+      startY: number
+      origins: Map<string, { x: number; y: number }>
+    }
   | { kind: 'marquee'; startX: number; startY: number; endX: number; endY: number }
 
 export function BoardCanvas() {
-  const document = useBoardStore((s) => s.document)
-  const selection = useBoardStore((s) => s.selection)
-  const tool = useBoardStore((s) => s.tool)
+  const { document, selection, tool } = useBoardStore(
+    useShallow((s) => ({
+      document: s.document,
+      selection: s.selection,
+      tool: s.tool
+    }))
+  )
   const setCamera = useBoardStore((s) => s.setCamera)
   const setSelection = useBoardStore((s) => s.setSelection)
   const selectItem = useBoardStore((s) => s.selectItem)
   const clearSelection = useBoardStore((s) => s.clearSelection)
-  const updateItem = useBoardStore((s) => s.updateItem)
+  const updateItems = useBoardStore((s) => s.updateItems)
   const setDropWorldAt = useBoardStore((s) => s.setDropWorldAt)
   const setViewportSize = useBoardStore((s) => s.setViewportSize)
   const pushUndoSnapshot = useBoardStore((s) => s.pushUndoSnapshot)
@@ -41,11 +52,20 @@ export function BoardCanvas() {
     wasSelected: boolean
     additive: boolean
   } | null>(null)
-  const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
+  const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(
+    null
+  )
+  const [liveCamera, setLiveCamera] = useState<BoardCamera | null>(null)
+  const [moveOffset, setMoveOffset] = useState<{
+    dx: number
+    dy: number
+    ids: ReadonlySet<string>
+  } | null>(null)
 
   const { setNodeRef, isOver } = useDroppable({ id: BOARD_DROP_ID })
 
-  const camera = document?.camera ?? { x: 0, y: 0, scale: 1 }
+  const storedCamera = document?.camera ?? { x: 0, y: 0, scale: 1 }
+  const camera = liveCamera ?? storedCamera
   const items = document?.items ?? []
   const sorted = useMemo(() => [...items].sort((a, b) => a.zIndex - b.zIndex), [items])
 
@@ -146,7 +166,10 @@ export function BoardCanvas() {
   }
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
-    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('board-world')) {
+    if (
+      e.target !== e.currentTarget &&
+      !(e.target as HTMLElement).classList.contains('board-world')
+    ) {
       return
     }
     updateDropAt(e.clientX, e.clientY)
@@ -249,10 +272,11 @@ export function BoardCanvas() {
     if (!rect) return
 
     if (drag.kind === 'pan') {
-      setCamera({
-        ...camera,
+      setLiveCamera({
+        ...storedCamera,
         x: drag.camX + (e.clientX - drag.startX),
-        y: drag.camY + (e.clientY - drag.startY)
+        y: drag.camY + (e.clientY - drag.startY),
+        scale: camera.scale
       })
       return
     }
@@ -266,14 +290,8 @@ export function BoardCanvas() {
     if (drag.kind === 'move') {
       const dx = (e.clientX - drag.startX) / camera.scale
       const dy = (e.clientY - drag.startY) / camera.scale
-      for (const id of drag.ids) {
-        const o = drag.origins.get(id)
-        if (!o) continue
-        updateItem(id, { x: o.x + dx, y: o.y + dy })
-      }
-      return
+      setMoveOffset({ dx, dy, ids: new Set(drag.ids) })
     }
-
   }
 
   const endDrag = (e: React.PointerEvent) => {
@@ -285,6 +303,29 @@ export function BoardCanvas() {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
       /* ignore */
+    }
+
+    if (drag?.kind === 'pan') {
+      setCamera({
+        ...storedCamera,
+        x: drag.camX + (e.clientX - drag.startX),
+        y: drag.camY + (e.clientY - drag.startY),
+        scale: camera.scale
+      })
+      setLiveCamera(null)
+    }
+
+    if (drag?.kind === 'move') {
+      const dx = (e.clientX - drag.startX) / camera.scale
+      const dy = (e.clientY - drag.startY) / camera.scale
+      const patches: Array<{ id: string; patch: Partial<BoardItem> }> = []
+      for (const id of drag.ids) {
+        const o = drag.origins.get(id)
+        if (!o) continue
+        patches.push({ id, patch: { x: o.x + dx, y: o.y + dy } })
+      }
+      if (patches.length > 0) updateItems(patches)
+      setMoveOffset(null)
     }
 
     if (click && drag?.kind === 'move') {
@@ -332,8 +373,19 @@ export function BoardCanvas() {
       width: Math.abs(w2.x - w1.x),
       height: Math.abs(w2.y - w1.y)
     }
-    return sorted.filter((it) => rectsIntersect(itemRect(it), view))
-  }, [sorted, camera])
+    return sorted.filter((it) => {
+      const rectIt =
+        moveOffset && moveOffset.ids.has(it.id)
+          ? {
+              x: it.x + moveOffset.dx,
+              y: it.y + moveOffset.dy,
+              width: it.width,
+              height: it.height
+            }
+          : itemRect(it)
+      return rectsIntersect(rectIt, view)
+    })
+  }, [sorted, camera, moveOffset])
 
   if (!document) return null
 
@@ -360,16 +412,23 @@ export function BoardCanvas() {
           transformOrigin: '0 0'
         }}
       >
-        {visibleItems.map((item) => (
-          <BoardItemView
-            key={item.id}
-            item={item}
-            selected={selection.includes(item.id)}
-            camera={camera}
-            getViewportRect={getRect}
-            onPointerDown={(e) => onItemPointerDown(item, e)}
-          />
-        ))}
+        {visibleItems.map((item) => {
+          const dragPosition =
+            moveOffset && moveOffset.ids.has(item.id)
+              ? { x: item.x + moveOffset.dx, y: item.y + moveOffset.dy }
+              : null
+          return (
+            <BoardItemView
+              key={item.id}
+              item={item}
+              dragPosition={dragPosition}
+              selected={selection.includes(item.id)}
+              camera={camera}
+              getViewportRect={getRect}
+              onPointerDown={(ev) => onItemPointerDown(item, ev)}
+            />
+          )
+        })}
       </div>
       {marquee && (
         <div

@@ -170,10 +170,16 @@ CREATE TABLE IF NOT EXISTS identifiers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_media_root ON media_items(root_id);
+CREATE INDEX IF NOT EXISTS idx_media_missing_kind ON media_items(missing, kind);
+CREATE INDEX IF NOT EXISTS idx_media_missing_mtime ON media_items(missing, mtime);
+CREATE INDEX IF NOT EXISTS idx_media_root_path ON media_items(root_id, relative_path);
 CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_media_tags_media ON media_tags(media_id);
 CREATE INDEX IF NOT EXISTS idx_media_tag_suggestions_media ON media_tag_suggestions(media_id);
 CREATE INDEX IF NOT EXISTS idx_media_tag_suggestions_tag ON media_tag_suggestions(tag_id);
 CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_id);
+CREATE INDEX IF NOT EXISTS idx_tag_closure_ancestor ON tag_closure(ancestor_id);
+CREATE INDEX IF NOT EXISTS idx_tag_closure_descendant ON tag_closure(descendant_id);
+CREATE INDEX IF NOT EXISTS idx_collection_members_collection ON collection_members(collection_id);
 CREATE INDEX IF NOT EXISTS idx_collection_members_media ON collection_members(media_id);
 CREATE INDEX IF NOT EXISTS idx_subjects_media ON subjects(media_id);

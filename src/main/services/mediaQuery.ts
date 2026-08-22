@@ -7,6 +7,7 @@ import type { SearchNode } from '../../shared/searchAst'
 
 export interface SearchOptions {
   sortOrder?: MediaSortOrder
+  collectionId?: number | null
 }
 
 type TagClause = Extract<SearchNode, { type: 'tag' }>
@@ -131,23 +132,88 @@ export function runSearchAst(
   offset = 0,
   options: SearchOptions = {}
 ): MediaItem[] {
-  const ids = evalAst(ast, options)
+  let ids = evalAst(ast, options)
+  if (options.collectionId != null) {
+    const members = new Set(mediaIdsForCollection(options.collectionId))
+    if (ids === null) {
+      return listMedia({
+        collectionId: options.collectionId,
+        limit,
+        offset,
+        sortOrder: options.sortOrder
+      })
+    }
+    ids = ids.filter((id) => members.has(id))
+  }
   if (ids === null) return listMedia({ limit, offset, sortOrder: options.sortOrder })
   if (ids.length === 0) return []
-  const orderBy = mediaSortOrderClause(options.sortOrder)
-  const placeholders = ids.map(() => '?').join(',')
-  const rows = getDb()
+  return fetchMediaByIds(ids, limit, offset, options.sortOrder)
+}
+
+/** Media IDs matching a search AST (empty AND root = all non-missing media). */
+export function matchMediaIds(ast: SearchNode, options: SearchOptions = {}): number[] {
+  const ids = evalAst(ast, options)
+  if (ids === null) return allMediaIds()
+  return ids
+}
+
+/** Resolve media rows for a large id set without huge `IN (...)` bind lists. */
+function fetchMediaByIds(
+  ids: number[],
+  limit: number,
+  offset: number,
+  sortOrder?: MediaSortOrder
+): MediaItem[] {
+  const db = getDb()
+  const orderBy = mediaSortOrderClause(sortOrder)
+  const SQLITE_MAX_VARIABLE_SAFE = 800
+
+  if (ids.length <= SQLITE_MAX_VARIABLE_SAFE) {
+    const placeholders = ids.map(() => '?').join(',')
+    const rows = db
+      .prepare(
+        `SELECT m.*, r.path AS root_path,
+                c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
+         FROM media_items m
+         JOIN watch_roots r ON r.id = m.root_id
+         LEFT JOIN media_crop c ON c.media_id = m.id
+         WHERE m.id IN (${placeholders}) AND m.missing = 0
+         ORDER BY ${orderBy}
+         LIMIT ? OFFSET ?`
+      )
+      .all(...ids, limit, offset) as Array<
+        Omit<MediaItem, 'absolute_path'> & {
+          root_path: string
+          crop_x?: number | null
+          crop_y?: number | null
+          crop_w?: number | null
+          crop_h?: number | null
+        }
+      >
+    return rows.map((r) => enrichMediaWithCrop(r))
+  }
+
+  db.exec(`CREATE TEMP TABLE IF NOT EXISTS _search_ids (id INTEGER PRIMARY KEY)`)
+  db.exec(`DELETE FROM _search_ids`)
+  const insert = db.prepare(`INSERT OR IGNORE INTO _search_ids (id) VALUES (?)`)
+  const fill = db.transaction((list: number[]) => {
+    for (const id of list) insert.run(id)
+  })
+  fill(ids)
+
+  const rows = db
     .prepare(
       `SELECT m.*, r.path AS root_path,
               c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
        FROM media_items m
+       JOIN _search_ids s ON s.id = m.id
        JOIN watch_roots r ON r.id = m.root_id
        LEFT JOIN media_crop c ON c.media_id = m.id
-       WHERE m.id IN (${placeholders}) AND m.missing = 0
+       WHERE m.missing = 0
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`
     )
-    .all(...ids, limit, offset) as Array<
+    .all(limit, offset) as Array<
       Omit<MediaItem, 'absolute_path'> & {
         root_path: string
         crop_x?: number | null
@@ -157,13 +223,6 @@ export function runSearchAst(
       }
     >
   return rows.map((r) => enrichMediaWithCrop(r))
-}
-
-/** Media IDs matching a search AST (empty AND root = all non-missing media). */
-export function matchMediaIds(ast: SearchNode, options: SearchOptions = {}): number[] {
-  const ids = evalAst(ast, options)
-  if (ids === null) return allMediaIds()
-  return ids
 }
 
 function evalAst(node: SearchNode, options: SearchOptions): number[] | null {

@@ -198,6 +198,18 @@ function migrateAppPrefs(database: Database.Database): void {
   `)
 }
 
+/** Indexes for hot list/search filters (IF NOT EXISTS — safe on every startup). */
+function migrateHotIndexes(database: Database.Database): void {
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_media_missing_kind ON media_items(missing, kind);
+    CREATE INDEX IF NOT EXISTS idx_media_missing_mtime ON media_items(missing, mtime);
+    CREATE INDEX IF NOT EXISTS idx_media_root_path ON media_items(root_id, relative_path);
+    CREATE INDEX IF NOT EXISTS idx_tag_closure_ancestor ON tag_closure(ancestor_id);
+    CREATE INDEX IF NOT EXISTS idx_tag_closure_descendant ON tag_closure(descendant_id);
+    CREATE INDEX IF NOT EXISTS idx_collection_members_collection ON collection_members(collection_id);
+  `)
+}
+
 function migrateSubjectRegions(database: Database.Database): void {
   if (!tableExists(database, 'subjects') || columnExists(database, 'subjects', 'region_x')) {
     return
@@ -238,6 +250,7 @@ function migrate(database: Database.Database): void {
   migrateCollectionSortOrder(database)
   migrateSubjectRegions(database)
   migrateAppPrefs(database)
+  migrateHotIndexes(database)
 
   database.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS tags_fts USING fts5(

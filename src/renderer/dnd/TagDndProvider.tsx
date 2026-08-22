@@ -295,7 +295,7 @@ export function TagDndProvider({ children }: { children: ReactNode }) {
         sensors={sensors}
         collisionDetection={galleryCollisionDetection}
         measuring={{
-          droppable: { strategy: MeasuringStrategy.Always }
+          droppable: { strategy: MeasuringStrategy.WhileDragging }
         }}
         modifiers={[snapCenterToCursor]}
         autoScroll={pointerAutoScroll.autoScroll}

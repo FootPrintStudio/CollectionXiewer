@@ -1,8 +1,11 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
+import { memo, useEffect, useState, type CSSProperties, type MouseEvent } from 'react'
 import { mediaAspectRatioCss } from '../../shared/mediaDimensions'
 import type { IdentifierBadge, MediaItem, Tag } from '../../shared/types'
 import { useMediaTagDrop } from '../dnd/useMediaTagDrop'
 import { useMediaDrag } from '../dnd/useMediaDrag'
+import { useRegisterVisibleMedia } from '../hooks/visibleMediaIds'
+import { jpegBase64ToObjectUrl, revokeObjectUrl } from '../lib/blobUrl'
+import { fetchThumbBase64 } from '../lib/thumbFetch'
 import { useAppStore } from '../store/appStore'
 import { ThumbTagStrip } from './ThumbTagStrip'
 import { ThumbIdentifierBadges } from './ThumbIdentifierBadges'
@@ -23,7 +26,26 @@ interface Props {
   onDoubleClick: () => void
 }
 
-export function ThumbCell({
+function thumbPropsEqual(prev: Props, next: Props): boolean {
+  return (
+    prev.item.id === next.item.id &&
+    prev.item.width === next.item.width &&
+    prev.item.height === next.item.height &&
+    prev.item.kind === next.item.kind &&
+    prev.item.relative_path === next.item.relative_path &&
+    prev.item.crop === next.item.crop &&
+    prev.width === next.width &&
+    prev.height === next.height &&
+    prev.pixelSize === next.pixelSize &&
+    prev.fillGridCell === next.fillGridCell &&
+    prev.selected === next.selected &&
+    prev.primary === next.primary &&
+    prev.thumbTags === next.thumbTags &&
+    prev.identifierBadges === next.identifierBadges
+  )
+}
+
+function ThumbCellImpl({
   item,
   width,
   height,
@@ -41,15 +63,21 @@ export function ThumbCell({
   const [src, setSrc] = useState<string | null>(null)
   const { setNodeRef: setDropRef, isDropHover } = useMediaTagDrop(item.id)
   const { attributes, listeners, setNodeRef: setDragRef, isDragging, dragCount } = useMediaDrag(item.id)
+  useRegisterVisibleMedia(item.id)
 
   useEffect(() => {
     if (!pixelSize) return
     let cancelled = false
-    void window.collectionXiewer.thumb.get(item.id, pixelSize).then((b64) => {
-      if (!cancelled && b64) setSrc(`data:image/jpeg;base64,${b64}`)
+    let objectUrl: string | null = null
+    setSrc(null)
+    void fetchThumbBase64(item.id, pixelSize).then((b64) => {
+      if (cancelled || !b64) return
+      objectUrl = jpegBase64ToObjectUrl(b64)
+      setSrc(objectUrl)
     })
     return () => {
       cancelled = true
+      revokeObjectUrl(objectUrl)
     }
   }, [item.id, pixelSize])
 
@@ -101,3 +129,5 @@ export function ThumbCell({
     </div>
   )
 }
+
+export const ThumbCell = memo(ThumbCellImpl, thumbPropsEqual)

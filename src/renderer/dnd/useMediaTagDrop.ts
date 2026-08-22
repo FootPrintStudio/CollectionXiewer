@@ -15,7 +15,7 @@ export function useMediaTagDrop(mediaId: number | null, kind: MediaTagDropKind =
 
   const { setNodeRef, isOver } = useDroppable({
     id: dropId,
-    disabled: mediaId == null,
+    disabled: mediaId == null || draggingTag == null,
     data: { type: kind, mediaId }
   })
 

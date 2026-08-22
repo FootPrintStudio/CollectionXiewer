@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type {
-  CollectionMember,
   CollectionWithStats,
   GalleryViewMode,
   MediaItem,
@@ -34,6 +33,9 @@ const api = () => window.collectionXiewer
 
 export const MEDIA_PAGE_SIZE = 500
 
+/** Monotonic id so stale refresh/loadMore results are ignored. */
+let mediaRequestSeq = 0
+
 export interface SubjectRegionEditTarget {
   mediaId: number
   subjectId: number
@@ -49,7 +51,13 @@ async function fetchMediaPage(
   hasSearchFilters: boolean
 ): Promise<MediaItem[]> {
   if (hasSearchFilters) {
-    return api().media.search(searchAst, limit, offset, mediaSortOrder)
+    return api().media.search(
+      searchAst,
+      limit,
+      offset,
+      mediaSortOrder,
+      selectedCollectionId
+    )
   }
   if (selectedCollectionId) {
     return api().media.list({
@@ -333,8 +341,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshMedia: async () => {
     const { searchAst, selectedCollectionId, mediaSortOrder } = get()
     const hasSearchFilters = !isEmptySearchAst(searchAst)
+    const requestId = ++mediaRequestSeq
 
-    let media = await fetchMediaPage(
+    const media = await fetchMediaPage(
       0,
       MEDIA_PAGE_SIZE,
       searchAst,
@@ -343,11 +352,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       hasSearchFilters
     )
 
-    if (hasSearchFilters && selectedCollectionId) {
-      const members = await api().collections.members(selectedCollectionId)
-      const memberIds = new Set(members.map((m: CollectionMember) => m.media_id))
-      media = media.filter((m) => memberIds.has(m.id))
-    }
+    if (requestId !== mediaRequestSeq) return
 
     const idSet = new Set(media.map((m) => m.id))
     const { selectedMediaIds, selectedMediaId, selectionAnchorId } = get()
@@ -377,11 +382,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!mediaHasMore || mediaLoadingMore) return
 
     const hasSearchFilters = !isEmptySearchAst(searchAst)
+    const requestId = ++mediaRequestSeq
+    const offset = media.length
     set({ mediaLoadingMore: true })
 
     try {
-      let page = await fetchMediaPage(
-        media.length,
+      const page = await fetchMediaPage(
+        offset,
         MEDIA_PAGE_SIZE,
         searchAst,
         selectedCollectionId,
@@ -389,20 +396,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         hasSearchFilters
       )
 
-      if (hasSearchFilters && selectedCollectionId) {
-        const members = await api().collections.members(selectedCollectionId)
-        const memberIds = new Set(members.map((m: CollectionMember) => m.media_id))
-        page = page.filter((m) => memberIds.has(m.id))
-      }
+      if (requestId !== mediaRequestSeq) return
 
       const existingIds = new Set(media.map((m) => m.id))
       const appended = page.filter((m) => !existingIds.has(m.id))
       set({
         media: [...media, ...appended],
-        mediaHasMore: page.length >= MEDIA_PAGE_SIZE
+        mediaHasMore: page.length >= MEDIA_PAGE_SIZE,
+        mediaLoadingMore: false
       })
-    } finally {
-      set({ mediaLoadingMore: false })
+    } catch {
+      if (requestId === mediaRequestSeq) set({ mediaLoadingMore: false })
     }
   },
 

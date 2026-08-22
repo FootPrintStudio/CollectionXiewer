@@ -64,17 +64,22 @@ export function registerIpcHandlers(): void {
       astJson: string,
       limit?: number,
       offset?: number,
-      sortOrder?: MediaListQuery['sortOrder']
+      sortOrder?: MediaListQuery['sortOrder'],
+      collectionId?: number | null
     ) =>
       backfillExoticRasterDimensions(
-        mediaQuery.runSearchAst(parseSearchAst(astJson), limit, offset, { sortOrder })
+        mediaQuery.runSearchAst(parseSearchAst(astJson), limit, offset, {
+          sortOrder,
+          collectionId
+        })
       )
   )
 
   ipcMain.handle('thumb:get', async (_e, mediaId: number, size: number) => {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) return null
-    const buf = await thumbs.generateThumbnail(media.absolute_path, size, mediaId, media.kind)
+    const capped = Math.min(Math.max(16, Math.round(size) || 256), 1024)
+    const buf = await thumbs.generateThumbnail(media.absolute_path, capped, mediaId, media.kind)
     return buf?.toString('base64') ?? null
   })
 
@@ -82,7 +87,8 @@ export function registerIpcHandlers(): void {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) return null
     if (media.kind === 'motion') return null
-    const buf = await thumbs.generatePreviewBuffer(media.absolute_path, maxDim, mediaId, media.kind)
+    const capped = Math.min(Math.max(64, Math.round(maxDim) || 2048), 4096)
+    const buf = await thumbs.generatePreviewBuffer(media.absolute_path, capped, mediaId, media.kind)
     return buf?.toString('base64') ?? null
   })
 
@@ -90,9 +96,10 @@ export function registerIpcHandlers(): void {
     const media = mediaQuery.getMedia(mediaId)
     if (!media) return null
     if (media.kind === 'motion') return null
+    const capped = Math.min(Math.max(64, Math.round(maxDim) || 4096), 8192)
     const buf = await thumbs.generatePreviewBuffer(
       media.absolute_path,
-      maxDim,
+      capped,
       mediaId,
       media.kind,
       { skipCrop: true }
@@ -174,16 +181,20 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('mediaTags:suggestions', (_e, mediaId: number) =>
     tags.listMediaTagSuggestions(mediaId)
   )
-  ipcMain.handle('mediaTags:apply', (_e, mediaId: number, tagId: number, subjectId: number | null) =>
-    tags.applyTag(mediaId, tagId, subjectId)
-  )
-  ipcMain.handle('mediaTags:remove', (_e, mediaId: number, tagId: number, subjectId: number | null) =>
+  ipcMain.handle('mediaTags:apply', (_e, mediaId: number, tagId: number, subjectId: number | null) => {
+    const result = tags.applyTag(mediaId, tagId, subjectId)
+    identifierMatch.invalidateIdentifierMatchCache()
+    return result
+  })
+  ipcMain.handle('mediaTags:remove', (_e, mediaId: number, tagId: number, subjectId: number | null) => {
     tags.removeMediaTag(mediaId, tagId, subjectId)
-  )
+    identifierMatch.invalidateIdentifierMatchCache()
+  })
   ipcMain.handle(
     'mediaTags:move',
     (_e, mediaId: number, tagId: number, fromSubjectId: number, toSubjectId: number) => {
       tags.moveMediaTag(mediaId, tagId, fromSubjectId, toSubjectId)
+      identifierMatch.invalidateIdentifierMatchCache()
     }
   )
   ipcMain.handle(
@@ -193,7 +204,11 @@ export function registerIpcHandlers(): void {
       mediaIds: number[],
       tagId: number,
       subject: tags.BulkApplySubject
-    ) => tags.bulkApplyTag(mediaIds, tagId, subject)
+    ) => {
+      const result = tags.bulkApplyTag(mediaIds, tagId, subject)
+      identifierMatch.invalidateIdentifierMatchCache()
+      return result
+    }
   )
 
   ipcMain.handle('subjects:list', (_e, mediaId: number) => tags.listSubjects(mediaId))
@@ -237,12 +252,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('collections:delete', (_e, id: number) => collections.deleteCollection(id))
   ipcMain.handle('collections:members', (_e, id: number) => collections.listCollectionMembers(id))
   ipcMain.handle('collections:media', (_e, id: number) => collections.listCollectionMedia(id))
-  ipcMain.handle('collections:add-member', (_e, colId: number, mediaId: number) =>
+  ipcMain.handle('collections:add-member', (_e, colId: number, mediaId: number) => {
     collections.addToCollection(colId, mediaId)
-  )
-  ipcMain.handle('collections:remove-member', (_e, colId: number, mediaId: number) =>
+    identifierMatch.invalidateIdentifierMatchCache()
+  })
+  ipcMain.handle('collections:remove-member', (_e, colId: number, mediaId: number) => {
     collections.removeFromCollection(colId, mediaId)
-  )
+    identifierMatch.invalidateIdentifierMatchCache()
+  })
   ipcMain.handle('collections:for-media', (_e, mediaId: number) =>
     collections.listCollectionsForMedia(mediaId)
   )
@@ -342,7 +359,18 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('fs:delete', (_e, mediaId: number) => fsOps.deleteMediaFile(mediaId))
   ipcMain.handle('fs:reveal', (_e, mediaId: number) => fsOps.revealMedia(mediaId))
 
-  ipcMain.handle('shell:open-external', (_e, url: string) => shell.openExternal(url))
+  ipcMain.handle('shell:open-external', (_e, url: string) => {
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw new Error('Invalid URL')
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('Only http(s) URLs can be opened')
+    }
+    return shell.openExternal(parsed.toString())
+  })
 
   ipcMain.handle('boards:get-root', () => boards.getBoardsRootPath())
   ipcMain.handle('boards:set-root', (_e, path: string | null) => {
@@ -390,7 +418,7 @@ export function registerIpcHandlers(): void {
       filters: [{ name: 'SQLite database', extensions: ['db'] }]
     })
     if (result.canceled || !result.filePath) return null
-    backupDatabase(result.filePath)
+    await backupDatabase(result.filePath)
     return result.filePath
   })
 }

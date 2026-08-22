@@ -1,34 +1,74 @@
 import { app } from 'electron'
-import { createReadStream, existsSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { createReadStream, existsSync, writeFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { basename, extname } from 'node:path'
+import { basename, extname, join } from 'node:path'
 import { parseSearchQuery } from '../../shared/searchParser'
 import type { MediaItem, MediaSortOrder } from '../../shared/types'
 import { MEDIA_SORT_ORDERS } from '../../shared/mediaSort'
 import { buildSearchResolveContext } from './identifiers'
 import * as mediaQuery from './mediaQuery'
+import { getDataDir } from './dbBackup'
 
 export const LOCAL_API_HOST = '127.0.0.1'
 export const LOCAL_API_PORT = 47821
+export const LOCAL_API_TOKEN_HEADER = 'x-collectionxiewer-token'
 
 let server: Server | null = null
+let apiToken: string | null = null
+
+function corsHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    // Loopback + bearer token is the access gate; tools may call from varied local origins.
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': `Content-Type, ${LOCAL_API_TOKEN_HEADER}, Authorization`,
+    ...extra
+  }
+}
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body)
   res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Content-Length': Buffer.byteLength(payload),
-    'Access-Control-Allow-Origin': '*'
+    ...corsHeaders({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Length': String(Buffer.byteLength(payload))
+    })
   })
   res.end(payload)
 }
 
 function sendText(res: ServerResponse, status: number, message: string): void {
   res.writeHead(status, {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Access-Control-Allow-Origin': '*'
+    ...corsHeaders({
+      'Content-Type': 'text/plain; charset=utf-8'
+    })
   })
   res.end(message)
+}
+
+function extractToken(req: IncomingMessage): string | null {
+  const header = req.headers[LOCAL_API_TOKEN_HEADER]
+  if (typeof header === 'string' && header.trim()) return header.trim()
+  const auth = req.headers.authorization
+  if (typeof auth === 'string') {
+    const m = /^Bearer\s+(.+)$/i.exec(auth.trim())
+    if (m?.[1]) return m[1].trim()
+  }
+  return null
+}
+
+function requireAuth(req: IncomingMessage, res: ServerResponse): boolean {
+  if (!apiToken) {
+    sendText(res, 503, 'Local API token not ready.')
+    return false
+  }
+  const provided = extractToken(req)
+  if (!provided || provided !== apiToken) {
+    sendText(res, 401, 'Unauthorized. Provide X-CollectionXiewer-Token or Authorization: Bearer.')
+    return false
+  }
+  return true
 }
 
 function parsePositiveInt(value: string | null, fallback: number, max = 5000): number {
@@ -68,10 +108,14 @@ function mimeForPath(filePath: string, mime: string | null): string {
   }
 }
 
+function fileUrlForId(id: number): string {
+  return `http://${LOCAL_API_HOST}:${LOCAL_API_PORT}/file/${id}`
+}
+
 function toSearchItem(item: MediaItem) {
   return {
     id: item.id,
-    path: item.absolute_path,
+    url: fileUrlForId(item.id),
     name: basename(item.relative_path),
     relative_path: item.relative_path,
     kind: item.kind,
@@ -144,21 +188,35 @@ function handleFile(idRaw: string, res: ServerResponse): void {
   }
 
   const contentType = mimeForPath(media.absolute_path, media.mime)
-  res.writeHead(200, {
-    'Content-Type': contentType,
-    'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'private, max-age=60'
+  const stream = createReadStream(media.absolute_path)
+  stream.on('error', () => {
+    if (!res.headersSent) sendText(res, 500, 'Failed to read media file.')
+    else res.destroy()
   })
-  createReadStream(media.absolute_path).pipe(res)
+  res.writeHead(200, {
+    ...corsHeaders({
+      'Content-Type': contentType,
+      'Cache-Control': 'private, max-age=60'
+    })
+  })
+  stream.pipe(res)
+}
+
+function persistTokenFile(token: string): void {
+  const payload = {
+    host: LOCAL_API_HOST,
+    port: LOCAL_API_PORT,
+    token,
+    tokenHeader: LOCAL_API_TOKEN_HEADER
+  }
+  writeFileSync(join(getDataDir(), 'local-api.json'), JSON.stringify(payload, null, 2), {
+    mode: 0o600
+  })
 }
 
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    })
+    res.writeHead(204, corsHeaders())
     res.end()
     return
   }
@@ -181,10 +239,13 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     sendJson(res, 200, {
       ok: true,
       version: app.getVersion(),
-      service: 'CollectionXiewer'
+      service: 'CollectionXiewer',
+      auth: 'required'
     })
     return
   }
+
+  if (!requireAuth(req, res)) return
 
   if (url.pathname === '/search') {
     try {
@@ -213,12 +274,21 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
 export function startLocalApi(): void {
   if (server) return
 
+  apiToken = randomBytes(32).toString('hex')
+  try {
+    persistTokenFile(apiToken)
+  } catch (err) {
+    console.error('[CollectionXiewer] Failed to write local-api.json:', err)
+  }
+
   server = createServer(handleRequest)
   server.on('error', (err) => {
     console.error(`[CollectionXiewer] Local API failed to bind ${LOCAL_API_HOST}:${LOCAL_API_PORT}:`, err)
   })
   server.listen(LOCAL_API_PORT, LOCAL_API_HOST, () => {
-    console.log(`[CollectionXiewer] Local API listening on http://${LOCAL_API_HOST}:${LOCAL_API_PORT}`)
+    console.log(
+      `[CollectionXiewer] Local API listening on http://${LOCAL_API_HOST}:${LOCAL_API_PORT} (token in ~/.config/CollectionXiewer/local-api.json)`
+    )
   })
 }
 
@@ -226,5 +296,10 @@ export function stopLocalApi(): void {
   if (!server) return
   const current = server
   server = null
+  apiToken = null
   current.close()
+}
+
+export function getLocalApiToken(): string | null {
+  return apiToken
 }

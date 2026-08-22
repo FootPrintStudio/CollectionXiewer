@@ -45,7 +45,9 @@ async function rasterizeGifWithGifuct(absolutePath: string, maxSize: number): Pr
   const frames = decompressFrames(parseGIF(data.buffer), true)
   if (!frames.length) return null
 
-  const frame = pickBestGifFrame(frames)
+  // Cap work: score at most the first 24 frames (avoids OOM on long GIFs).
+  const sample = frames.length > 24 ? frames.slice(0, 24) : frames
+  const frame = pickBestGifFrame(sample)
   const patch = frame.dims
   const canvas = readGifLogicalSize(absolutePath) ?? patch
   const width = canvas.width
@@ -71,9 +73,17 @@ export async function rasterizeMotionFirstFrame(
 
   if (ext === '.gif') {
     try {
-      return await rasterizeGifWithGifuct(absolutePath, maxSize)
+      // Prefer sharp single-page decode to avoid decompressing every GIF frame.
+      return await getSharp()(absolutePath, { pages: 1 })
+        .resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toBuffer()
     } catch {
-      /* fall through */
+      try {
+        return await rasterizeGifWithGifuct(absolutePath, maxSize)
+      } catch {
+        /* fall through */
+      }
     }
   }
 

@@ -40,7 +40,6 @@ export function SearchBar() {
   const collections = useAppStore((s) => s.collections)
   const roots = useAppStore((s) => s.roots)
   const searchAst = useAppStore((s) => s.searchAst)
-  const refreshMedia = useAppStore((s) => s.refreshMedia)
 
   const [localText, setLocalText] = useState(searchQueryText)
   const [cursor, setCursor] = useState(0)
@@ -76,12 +75,11 @@ export function SearchBar() {
   )
 
   const applyQuery = useCallback(
-    (text: string, runSearch = false) => {
+    (text: string, _runSearch = false) => {
       const trimmed = text.trim()
       if (!trimmed) {
         setParseError(null)
         setSearchQuery('', { type: 'and', children: [] })
-        if (runSearch) void refreshMedia()
         return true
       }
       const { ast, errors } = parseSearchQuery(trimmed, resolveCtx)
@@ -91,10 +89,9 @@ export function SearchBar() {
       }
       setParseError(null)
       setSearchQuery(trimmed, ast)
-      if (runSearch) void refreshMedia()
       return true
     },
-    [resolveCtx, setSearchQuery, refreshMedia]
+    [resolveCtx, setSearchQuery]
   )
 
   const commitLocalQuery = useCallback((): { queryText: string; ast: SearchNode } | null => {
@@ -157,7 +154,6 @@ export function SearchBar() {
       setLocalText(text)
       setParseError(null)
       setSearchQuery(text, ast)
-      void refreshMedia()
       requestAnimationFrame(() => {
         inputRef.current?.focus()
         const end = text.length
@@ -165,7 +161,7 @@ export function SearchBar() {
         setCursor(end)
       })
     },
-    [setSearchQuery, refreshMedia]
+    [setSearchQuery]
   )
 
   const updateSavedRow = useCallback(
@@ -251,7 +247,6 @@ export function SearchBar() {
       setLocalText(next.queryText)
       setParseError(null)
       store.setSearchQuery(next.queryText, next.ast)
-      void store.refreshMedia()
       requestAnimationFrame(() => {
         inputRef.current?.focus()
         const end = next.queryText.length
@@ -342,7 +337,6 @@ export function SearchBar() {
             setActiveSavedSearchId(null)
             setParseError(null)
             setSearchQuery('', { type: 'and', children: [] })
-            void refreshMedia()
           }}
         >
           Clear

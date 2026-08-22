@@ -1,6 +1,11 @@
+import { memo } from 'react'
 import type { IdentifierBadge } from '../../shared/types'
 
-export function ThumbIdentifierBadges({ badges }: { badges: IdentifierBadge[] }) {
+export const ThumbIdentifierBadges = memo(function ThumbIdentifierBadges({
+  badges
+}: {
+  badges: IdentifierBadge[]
+}) {
   if (badges.length === 0) return null
 
   return (
@@ -17,4 +22,4 @@ export function ThumbIdentifierBadges({ badges }: { badges: IdentifierBadge[] })
       ))}
     </div>
   )
-}
+})

@@ -6,18 +6,23 @@ import { useAppStore } from '../store/appStore'
 import { ZoomablePreviewImage } from './ZoomablePreviewImage'
 import { isEditableTarget } from '../lib/keyboardTargets'
 import { slideshowEligibleMedia } from '../lib/slideshowMedia'
+import { jpegBase64ToObjectUrl, revokeObjectUrl } from '../lib/blobUrl'
 
 function SlideshowSlide({ item }: { item: MediaItem }) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    let objectUrl: string | null = null
     setPreviewSrc(null)
     void window.collectionXiewer.preview.get(item.id, 2400).then((b64) => {
-      if (!cancelled && b64) setPreviewSrc(`data:image/jpeg;base64,${b64}`)
+      if (cancelled || !b64) return
+      objectUrl = jpegBase64ToObjectUrl(b64)
+      setPreviewSrc(objectUrl)
     })
     return () => {
       cancelled = true
+      revokeObjectUrl(objectUrl)
     }
   }, [item.id])
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { Tag } from '../../shared/types'
 import { tagChipStyle } from '../lib/tagChipStyle'
 import { useResolvedTagColor } from '../hooks/useResolvedTagColor'
@@ -18,7 +18,7 @@ function ThumbTagChip({ tag, compact }: { tag: Tag; compact?: boolean }) {
 
 const COLLAPSED_VISIBLE = 4
 
-export function ThumbTagStrip({ tags }: { tags: Tag[] }) {
+export const ThumbTagStrip = memo(function ThumbTagStrip({ tags }: { tags: Tag[] }) {
   const [expanded, setExpanded] = useState(false)
 
   if (tags.length === 0) return null
@@ -44,7 +44,7 @@ export function ThumbTagStrip({ tags }: { tags: Tag[] }) {
         </div>
       ) : null}
       <div className="thumb-tag-strip__collapsed">
-        <div className="thumb-tag-strip__chip-list thumb-tag-strip__chip-list--collapsed">
+        <div className="thumb-tag-strip__chip-list thumb-tag-strip__chip-list--truncated">
           {collapsedTags.map((tag) => (
             <ThumbTagChip key={tag.id} tag={tag} compact />
           ))}
@@ -57,4 +57,4 @@ export function ThumbTagStrip({ tags }: { tags: Tag[] }) {
       </div>
     </div>
   )
-}
+})

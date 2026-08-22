@@ -280,54 +280,74 @@ function syncTagFts(tagId: number): void {
 
 export function rebuildClosureForTag(tagId: number): void {
   const db = getDb()
-  db.prepare(`DELETE FROM tag_closure WHERE descendant_id = ? OR ancestor_id = ?`).run(tagId, tagId)
-  db.prepare(`INSERT INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)`).run(
-    tagId,
-    tagId
-  )
+  const subtreeIds: number[] = []
+  const collect = (id: number) => {
+    subtreeIds.push(id)
+    const children = db.prepare(`SELECT id FROM tags WHERE parent_id = ?`).all(id) as { id: number }[]
+    for (const { id: childId } of children) collect(childId)
+  }
+  collect(tagId)
 
-  const walk = (parentId: number, depth: number): void => {
-    const children = db.prepare(`SELECT id FROM tags WHERE parent_id = ?`).all(parentId) as { id: number }[]
-    for (const { id: childId } of children) {
+  const rebuildOne = (id: number) => {
+    db.prepare(`DELETE FROM tag_closure WHERE descendant_id = ?`).run(id)
+    db.prepare(`INSERT INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)`).run(
+      id,
+      id
+    )
+    const row = db.prepare(`SELECT parent_id FROM tags WHERE id = ?`).get(id) as
+      | { parent_id: number | null }
+      | undefined
+    if (row?.parent_id != null) {
       const ancestors = db
         .prepare(`SELECT ancestor_id, depth FROM tag_closure WHERE descendant_id = ?`)
-        .all(parentId) as { ancestor_id: number; depth: number }[]
+        .all(row.parent_id) as { ancestor_id: number; depth: number }[]
       for (const a of ancestors) {
         db.prepare(
           `INSERT OR IGNORE INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, ?)`
-        ).run(a.ancestor_id, childId, a.depth + depth + 1)
+        ).run(a.ancestor_id, id, a.depth + 1)
       }
-      walk(childId, depth + 1)
     }
   }
-  walk(tagId, 0)
+
+  const tx = db.transaction(() => {
+    for (const id of subtreeIds) rebuildOne(id)
+  })
+  tx()
   bumpTagGraphEpoch()
-  rebuildAllClosure()
 }
 
 export function rebuildAllClosure(): void {
   const db = getDb()
-  db.exec(`DELETE FROM tag_closure`)
-  const roots = db.prepare(`SELECT id FROM tags`).all() as { id: number }[]
-  for (const { id } of roots) {
-    db.prepare(`INSERT OR IGNORE INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)`).run(
-      id,
-      id
-    )
-  }
-  const tags = listTags()
-  for (const tag of tags) {
-    if (tag.parent_id) {
-      const ancestors = db
-        .prepare(`SELECT ancestor_id, depth FROM tag_closure WHERE descendant_id = ?`)
-        .all(tag.parent_id) as { ancestor_id: number; depth: number }[]
-      for (const a of ancestors) {
-        db.prepare(
-          `INSERT OR IGNORE INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, ?)`
-        ).run(a.ancestor_id, tag.id, a.depth + 1)
+  const run = db.transaction(() => {
+    db.exec(`DELETE FROM tag_closure`)
+    const allIds = db.prepare(`SELECT id FROM tags`).all() as { id: number }[]
+    for (const { id } of allIds) {
+      db.prepare(
+        `INSERT OR IGNORE INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)`
+      ).run(id, id)
+    }
+    // Repeat until no new ancestor edges are added (handles arbitrary tag list order).
+    let changed = true
+    while (changed) {
+      changed = false
+      const tags = listTags()
+      for (const tag of tags) {
+        if (!tag.parent_id) continue
+        const ancestors = db
+          .prepare(`SELECT ancestor_id, depth FROM tag_closure WHERE descendant_id = ?`)
+          .all(tag.parent_id) as { ancestor_id: number; depth: number }[]
+        for (const a of ancestors) {
+          const r = db
+            .prepare(
+              `INSERT OR IGNORE INTO tag_closure (ancestor_id, descendant_id, depth) VALUES (?, ?, ?)`
+            )
+            .run(a.ancestor_id, tag.id, a.depth + 1)
+          if (r.changes > 0) changed = true
+        }
       }
     }
-  }
+  })
+  run()
   syncTagClosureEpoch()
 }
 
@@ -609,7 +629,6 @@ export function refreshMediaSuggestions(mediaId: number): void {
 }
 
 export function listMediaTagSuggestions(mediaId: number): MediaTagSuggestion[] {
-  refreshMediaSuggestions(mediaId)
   const rows = getDb()
     .prepare(
       `SELECT mts.media_id, mts.subject_id, mts.tag_id, mts.source_tag_id, t.*

@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises'
 import { protocol } from 'electron'
 import mime from 'mime-types'
 import { MEDIA_SCHEME } from '../../shared/mediaProtocol'
+import { isAllowedMediaProtocolPath } from '../lib/allowedMediaPaths'
 
 export { MEDIA_SCHEME }
 
@@ -53,6 +54,9 @@ export function installMediaProtocolHandler(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const filePath = new URL(request.url).searchParams.get('path')
     if (!filePath) return new Response('Missing path', { status: 400 })
+    if (!isAllowedMediaProtocolPath(filePath)) {
+      return new Response('Forbidden', { status: 403 })
+    }
 
     let fileStat: Awaited<ReturnType<typeof stat>>
     try {

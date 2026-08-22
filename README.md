@@ -100,20 +100,32 @@ On Ubuntu 24.04+ without FUSE, either install `libfuse2t64` or run:
 
 ## Local API (Oculus / external tools)
 
-While CollectionXiewer is running, a **loopback-only** HTTP API listens on `http://127.0.0.1:47821`:
+While CollectionXiewer is running, a **loopback-only** HTTP API listens on `http://127.0.0.1:47821`.
+
+**Auth:** Every endpoint except `GET /health` requires a session token. On startup the app writes:
+
+`~/.config/CollectionXiewer/local-api.json`
+
+```json
+{ "host": "127.0.0.1", "port": 47821, "token": "…", "tokenHeader": "x-collectionxiewer-token" }
+```
+
+Send the token as `X-CollectionXiewer-Token: <token>` or `Authorization: Bearer <token>`.
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | `{ ok, version, service }` |
-| `GET /search?q=…&limit=500&offset=0&sort=name` | Run the same search language as the UI. Optional `sort`: `name`, `date_added`, `date_modified`. |
+| `GET /health` | `{ ok, version, service, auth }` (no token) |
+| `GET /search?q=…&limit=500&offset=0&sort=name` | Same search language as the UI. Optional `sort`: `name`, `date_added`, `date_modified`. |
 | `GET /file/:id` | Stream media bytes for a library item id (for Obsidian / Oculus tiles). |
 
-Search responses include `id`, `path`, `name`, `relative_path`, `kind`, `mtime`, `indexed_at`, `width`, `height`. Invalid queries return HTTP 400 with an error message.
+Search items include `id`, `url` (loopback `/file/:id`), `name`, `relative_path`, `kind`, `mtime`, `indexed_at`, `width`, `height`, `mime`. Absolute filesystem paths are not returned. Invalid queries return HTTP 400.
 
 Example:
 
 ```bash
-curl -s 'http://127.0.0.1:47821/search?q=tag:hero%20kind:image&limit=24'
+TOKEN=$(jq -r .token ~/.config/CollectionXiewer/local-api.json)
+curl -s -H "X-CollectionXiewer-Token: $TOKEN" \
+  'http://127.0.0.1:47821/search?q=tag:hero%20kind:image&limit=24'
 ```
 
 ## Data

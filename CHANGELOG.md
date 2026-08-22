@@ -2,6 +2,19 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.4.0 — 2026-08-22
+
+### Security
+- Media protocol allowlists watch roots, posters, and the app data dir
+- Local API requires a token from `~/.config/CollectionXiewer/local-api.json`; search results expose `url` instead of filesystem `path`
+- Board filenames are basename-allowlisted; `openExternal` is http(s)-only
+
+### Changed
+- Stability and efficiency pass from the audit: safer indexing/quit, capped thumbs, incremental tag closure, viewport-scoped gallery overlays, and related renderer/main hardening
+
+### Fixed
+- Search ∩ collection pagination; soft-missing for deleted files; crop/watcher races; preview navigation races; identifier badge caching
+
 ## 1.3.1 — 2026-08-22
 
 ### Fixed

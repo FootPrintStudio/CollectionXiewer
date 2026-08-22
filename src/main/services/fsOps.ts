@@ -49,6 +49,8 @@ export async function deleteMediaFile(mediaId: number): Promise<void> {
   if (!media) throw new Error('Media not found')
   await unlink(media.absolute_path)
   removeMediaWikiFts(mediaId)
+  const { clearPoster } = await import('./videoPoster')
+  clearPoster(mediaId)
   getDb().prepare(`DELETE FROM media_items WHERE id = ?`).run(mediaId)
 }
 

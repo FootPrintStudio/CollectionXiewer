@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { rename, unlink } from 'node:fs/promises'
-import { extname, join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { rename, unlink, copyFile } from 'node:fs/promises'
+import { dirname, extname, join } from 'node:path'
 import { pixelRect, transformRegionAfterCrop, validateCropRect } from '../../shared/cropRect'
 import { subjectRegion } from '../../shared/subjects'
 import { getSharp } from '../lib/lazyNative'
@@ -15,6 +14,7 @@ import { indexFile } from './indexer'
 import { getMedia } from './mediaQuery'
 import { invalidateThumbnailCache } from './thumbs'
 import { listSubjects, updateSubject } from './tags'
+import { suppressWatcherPath } from './watcherSuppress'
 
 export { pixelRect } from '../../shared/cropRect'
 
@@ -84,11 +84,17 @@ export async function applyCropToOriginal(mediaId: number, rect: CropRect): Prom
 
   const validated = validateCropRect(rect)
   const ext = extname(media.absolute_path) || '.jpg'
-  const tmp = join(tmpdir(), `cx-crop-${randomUUID()}${ext}`)
+  const tmp = join(dirname(media.absolute_path), `.cx-crop-${randomUUID()}${ext}`)
 
+  suppressWatcherPath(media.absolute_path, 8000)
   try {
     await exportCropped(media.absolute_path, validated, tmp, media.kind)
-    await rename(tmp, media.absolute_path)
+    try {
+      await rename(tmp, media.absolute_path)
+    } catch {
+      await copyFile(tmp, media.absolute_path)
+      await unlink(tmp).catch(() => {})
+    }
   } catch (err) {
     await unlink(tmp).catch(() => {})
     throw err

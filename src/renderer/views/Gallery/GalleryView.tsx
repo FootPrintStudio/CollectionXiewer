@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { MediaItem } from '../../../shared/types'
 import { ThumbCell } from '../../components/ThumbCell'
 import { useContainerWidth } from '../../hooks/useContainerWidth'
-import { useGalleryMarquee } from '../../hooks/useGalleryMarquee'
+import { useGalleryMarquee, type MarqueeHitTest } from '../../hooks/useGalleryMarquee'
+import { VisibleMediaIdsProvider } from '../../hooks/visibleMediaIds'
 import {
   computeColumnWidth,
   computeGridColumnCount,
@@ -11,6 +12,12 @@ import {
   mediaAspectRatio,
   thumbPixelSizeForDisplay
 } from '../../lib/galleryLayout'
+import {
+  hitTestGridLayout,
+  hitTestHorizontalLayout,
+  hitTestMasonryLayout,
+  type ContentRect
+} from '../../lib/galleryMarqueeHits'
 import { packHorizontalMasonryRows } from '../../lib/horizontalMasonryLayout'
 import { packMasonryColumns } from '../../lib/masonryLayout'
 import { useAppStore } from '../../store/appStore'
@@ -21,9 +28,11 @@ const H_MASONRY_ROW_HEIGHT_FACTOR = 0.75
 
 function GalleryArea({
   areaRef,
+  hitTestRef,
   children
 }: {
   areaRef: (node: HTMLDivElement | null) => void
+  hitTestRef: RefObject<MarqueeHitTest | null>
   children: ReactNode
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -54,7 +63,7 @@ function GalleryArea({
     [clearMediaSelection, selectedMediaIds, setSelectedMediaIds]
   )
 
-  const { marquee, onPointerDown } = useGalleryMarquee(containerRef, onMarqueeSelect)
+  const { marquee, onPointerDown } = useGalleryMarquee(containerRef, onMarqueeSelect, hitTestRef)
 
   return (
     <div ref={setRef} className="gallery-area" onPointerDown={onPointerDown}>
@@ -191,9 +200,12 @@ export function GalleryView() {
   const clearMediaSelection = useAppStore((s) => s.clearMediaSelection)
   const openPreview = useAppStore((s) => s.openPreview)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const hitTestRef = useRef<MarqueeHitTest | null>(null)
+  const stickyMasonryRef = useRef<Map<number, number>>(new Map())
   const { ref: measureGalleryWidth, width: galleryAreaWidth } = useContainerWidth<HTMLDivElement>()
-  const thumbTagsMap = useGalleryThumbTags()
-  const identifierBadgesMap = useGalleryIdentifierBadges()
+  const [visibleMediaIds, setVisibleMediaIds] = useState<number[]>([])
+  const thumbTagsMap = useGalleryThumbTags(visibleMediaIds)
+  const identifierBadgesMap = useGalleryIdentifierBadges(visibleMediaIds)
 
   const thumbOverlayProps = useCallback(
     (mediaId: number) => ({
@@ -284,13 +296,33 @@ export function GalleryView() {
     overscan: 3
   })
 
-  const masonryColumns = useMemo(
-    () =>
-      galleryMode === 'masonry'
-        ? packMasonryColumns(media, columnCount, columnWidth, GRID_GAP_PX)
-        : [],
-    [media, galleryMode, columnCount, columnWidth]
-  )
+  const stickyMetaRef = useRef({ columnCount, galleryMode })
+  if (
+    stickyMetaRef.current.columnCount !== columnCount ||
+    stickyMetaRef.current.galleryMode !== galleryMode
+  ) {
+    stickyMasonryRef.current = new Map()
+    stickyMetaRef.current = { columnCount, galleryMode }
+  }
+
+  const masonryPacked = useMemo(() => {
+    if (galleryMode !== 'masonry') {
+      return { columns: [] as MediaItem[][], assignments: new Map<number, number>() }
+    }
+    return packMasonryColumns(
+      media,
+      columnCount,
+      columnWidth,
+      GRID_GAP_PX,
+      stickyMasonryRef.current
+    )
+  }, [media, galleryMode, columnCount, columnWidth])
+
+  const masonryColumns = masonryPacked.columns
+
+  useEffect(() => {
+    stickyMasonryRef.current = masonryPacked.assignments
+  }, [masonryPacked])
 
   const targetRowHeight = gridSize * H_MASONRY_ROW_HEIGHT_FACTOR
 
@@ -317,13 +349,32 @@ export function GalleryView() {
     if (galleryMode === 'grid') gridVirtualizer.measure()
   }, [galleryMode, gridRows, columnWidth, gridSize, gridVirtualizer])
 
+  hitTestRef.current = (clientRect: ContentRect) => {
+    const el = scrollRef.current
+    if (!el) return []
+    const bounds = el.getBoundingClientRect()
+    const content: ContentRect = {
+      left: clientRect.left - bounds.left + el.scrollLeft,
+      top: clientRect.top - bounds.top + el.scrollTop,
+      right: clientRect.right - bounds.left + el.scrollLeft,
+      bottom: clientRect.bottom - bounds.top + el.scrollTop
+    }
+    if (galleryMode === 'grid') {
+      return hitTestGridLayout(content, gridRows, columnCount, columnWidth, GRID_GAP_PX)
+    }
+    if (galleryMode === 'masonry') {
+      return hitTestMasonryLayout(content, masonryColumns, columnWidth, GRID_GAP_PX)
+    }
+    return hitTestHorizontalLayout(content, hRows, GRID_GAP_PX)
+  }
+
   if (media.length === 0) {
     return <div className="empty-hint">No media indexed. Add a watch folder to begin.</div>
   }
 
-  if (galleryMode === 'grid') {
-    return (
-      <GalleryArea areaRef={galleryAreaRef}>
+  const galleryBody =
+    galleryMode === 'grid' ? (
+      <>
         <div
           className="grid-gallery grid-gallery--virtual"
           style={{ height: gridVirtualizer.getTotalSize(), position: 'relative' }}
@@ -363,13 +414,9 @@ export function GalleryView() {
           })}
         </div>
         <GalleryLoadMoreFooter />
-      </GalleryArea>
-    )
-  }
-
-  if (galleryMode === 'masonry') {
-    return (
-      <GalleryArea areaRef={galleryAreaRef}>
+      </>
+    ) : galleryMode === 'masonry' ? (
+      <>
         <div className="masonry-gallery">
           {masonryColumns.map((column, colIndex) => (
             <VirtualMasonryColumn
@@ -382,47 +429,52 @@ export function GalleryView() {
           ))}
         </div>
         <GalleryLoadMoreFooter />
-      </GalleryArea>
+      </>
+    ) : (
+      <>
+        <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+          {rowVirtualizer.getVirtualItems().map((vi) => {
+            const row = hRows[vi.index]
+            if (!row) return null
+            return (
+              <div
+                key={vi.key}
+                className="h-masonry-row"
+                style={{
+                  position: 'absolute',
+                  top: vi.start,
+                  left: 0,
+                  width: containerWidth,
+                  height: row.height
+                }}
+              >
+                {row.items.map((item, i) => (
+                  <ThumbCell
+                    key={item.id}
+                    item={item}
+                    width={row.widths[i]}
+                    height={row.height}
+                    pixelSize={thumbPixelSizeForDisplay(Math.max(row.widths[i], row.height))}
+                    selected={isMediaSelected(item.id)}
+                    primary={selectedMediaId === item.id}
+                    onClick={(e) => onThumbClick(item.id, e)}
+                    onDoubleClick={() => onThumbDoubleClick(item.id)}
+                    {...thumbOverlayProps(item.id)}
+                  />
+                ))}
+              </div>
+            )
+          })}
+        </div>
+        <GalleryLoadMoreFooter />
+      </>
     )
-  }
 
   return (
-    <GalleryArea areaRef={galleryAreaRef}>
-      <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-        {rowVirtualizer.getVirtualItems().map((vi) => {
-          const row = hRows[vi.index]
-          if (!row) return null
-          return (
-            <div
-              key={vi.key}
-              className="h-masonry-row"
-              style={{
-                position: 'absolute',
-                top: vi.start,
-                left: 0,
-                width: containerWidth,
-                height: row.height
-              }}
-            >
-              {row.items.map((item, i) => (
-                <ThumbCell
-                  key={item.id}
-                  item={item}
-                  width={row.widths[i]}
-                  height={row.height}
-                  pixelSize={thumbPixelSizeForDisplay(Math.max(row.widths[i], row.height))}
-                  selected={isMediaSelected(item.id)}
-                  primary={selectedMediaId === item.id}
-                  onClick={(e) => onThumbClick(item.id, e)}
-                  onDoubleClick={() => onThumbDoubleClick(item.id)}
-                  {...thumbOverlayProps(item.id)}
-                />
-              ))}
-            </div>
-          )
-        })}
-      </div>
-      <GalleryLoadMoreFooter />
-    </GalleryArea>
+    <VisibleMediaIdsProvider onChange={setVisibleMediaIds}>
+      <GalleryArea areaRef={galleryAreaRef} hitTestRef={hitTestRef}>
+        {galleryBody}
+      </GalleryArea>
+    </VisibleMediaIdsProvider>
   )
 }

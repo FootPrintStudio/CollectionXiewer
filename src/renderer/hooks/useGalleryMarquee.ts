@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type RefObject } from 'react'
 import { rectsIntersect } from '../lib/mediaSelection'
+import type { ContentRect } from '../lib/galleryMarqueeHits'
 
 export interface MarqueeRect {
   left: number
@@ -13,7 +14,9 @@ interface Point {
   y: number
 }
 
-function clientMarqueeFromPoints(start: Point, end: Point) {
+export type MarqueeHitTest = (marqueeClient: ContentRect) => number[]
+
+function clientMarqueeFromPoints(start: Point, end: Point): ContentRect {
   const left = Math.min(start.x, end.x)
   const top = Math.min(start.y, end.y)
   const right = Math.max(start.x, end.x)
@@ -23,7 +26,7 @@ function clientMarqueeFromPoints(start: Point, end: Point) {
 
 function collectMarqueeHits(
   container: HTMLElement,
-  marqueeClient: { left: number; top: number; right: number; bottom: number }
+  marqueeClient: ContentRect
 ): number[] {
   const hits: number[] = []
   const cells = container.querySelectorAll<HTMLElement>('.thumb-cell[data-media-id]')
@@ -47,7 +50,9 @@ function collectMarqueeHits(
 
 export function useGalleryMarquee(
   containerRef: RefObject<HTMLElement | null>,
-  onSelect: (ids: number[], opts: { additive: boolean }) => void
+  onSelect: (ids: number[], opts: { additive: boolean }) => void,
+  /** Preferred: layout-geometry hit test (includes virtualized / off-screen cells). */
+  hitTestRef?: RefObject<MarqueeHitTest | null>
 ) {
   const [marquee, setMarquee] = useState<MarqueeRect | null>(null)
   const startRef = useRef<Point | null>(null)
@@ -70,10 +75,11 @@ export function useGalleryMarquee(
       }
 
       const clientRect = clientMarqueeFromPoints(start, end)
-      const hits = collectMarqueeHits(container, clientRect)
+      const hits =
+        hitTestRef?.current?.(clientRect) ?? collectMarqueeHits(container, clientRect)
       onSelect(hits, { additive: additiveRef.current })
     },
-    [containerRef, onSelect]
+    [containerRef, hitTestRef, onSelect]
   )
 
   const onPointerDown = useCallback(

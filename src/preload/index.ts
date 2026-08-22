@@ -27,8 +27,13 @@ const api = {
   media: {
     list: (query?: MediaListQuery) => ipcRenderer.invoke('media:list', query ?? {}),
     get: (id: number) => ipcRenderer.invoke('media:get', id),
-    search: (ast: SearchNode, limit?: number, offset?: number, sortOrder?: MediaSortOrder) =>
-      ipcRenderer.invoke('media:search', JSON.stringify(ast), limit, offset, sortOrder)
+    search: (
+      ast: SearchNode,
+      limit?: number,
+      offset?: number,
+      sortOrder?: MediaSortOrder,
+      collectionId?: number | null
+    ) => ipcRenderer.invoke('media:search', JSON.stringify(ast), limit, offset, sortOrder, collectionId)
   },
   thumb: {
     get: (mediaId: number, size: number) => ipcRenderer.invoke('thumb:get', mediaId, size) as Promise<string | null>

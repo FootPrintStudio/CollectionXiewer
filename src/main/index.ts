@@ -8,8 +8,10 @@ import {
   setUpdaterMainWindow
 } from './services/updater'
 import { installMediaProtocolHandler, registerMediaScheme } from './protocol/mediaProtocol'
-import { stopAllWatchers } from './services/watcher'
+import { stopAllWatchers, stopAllWatchersAsync } from './services/watcher'
 import { initWatchers } from './services/roots'
+import { reconcileMissingMedia } from './services/indexer'
+import { drainIndexQueue } from './services/indexQueue'
 import { rebuildAllClosure } from './services/tags'
 import { migrateVirtualCrops } from './services/crop'
 import { ensureTagClosureCurrent } from './services/appPrefs'
@@ -17,8 +19,22 @@ import { startLocalApi, stopLocalApi } from './services/localApi'
 
 registerMediaScheme()
 
+function logProcessError(kind: string, err: unknown): void {
+  const message = err instanceof Error ? err.stack || err.message : String(err)
+  console.error(`[main] ${kind}:`, message)
+}
+
+process.on('uncaughtException', (err) => {
+  logProcessError('uncaughtException', err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  logProcessError('unhandledRejection', reason)
+})
+
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
+let quitting = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -57,25 +73,48 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  installMediaProtocolHandler()
   getDb()
+  installMediaProtocolHandler()
   ensureTagClosureCurrent(rebuildAllClosure)
-  await migrateVirtualCrops()
   registerIpcHandlers()
   startLocalApi()
   initUpdater()
   initWatchers()
   createWindow()
+  // Soft-missing for files removed while the app was closed (non-blocking).
+  try {
+    const n = reconcileMissingMedia()
+    if (n > 0) console.info(`[indexer] marked ${n} missing file(s)`)
+  } catch (err) {
+    console.warn('[indexer] reconcile failed:', err instanceof Error ? err.message : err)
+  }
+  // Bake legacy virtual crops after UI is up so startup is not blocked.
+  void migrateVirtualCrops().catch((err) => {
+    console.warn('[crop] migration failed:', err instanceof Error ? err.message : err)
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-app.on('before-quit', () => {
-  stopLocalApi()
-  stopAllWatchers()
-  closeDb()
+app.on('before-quit', (e) => {
+  if (quitting) return
+  e.preventDefault()
+  quitting = true
+  void (async () => {
+    try {
+      stopLocalApi()
+      await drainIndexQueue()
+      await stopAllWatchersAsync()
+    } catch (err) {
+      console.warn('[quit] drain failed:', err instanceof Error ? err.message : err)
+      stopAllWatchers()
+    } finally {
+      closeDb()
+      app.quit()
+    }
+  })()
 })
 
 app.on('window-all-closed', () => {

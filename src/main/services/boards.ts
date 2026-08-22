@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { dialog } from 'electron'
 import type { BrowserWindow } from 'electron'
@@ -30,8 +30,20 @@ function requireRoot(): string {
   return root
 }
 
+/** Reject path traversal and non-board filenames from the renderer. */
+export function assertSafeBoardFileName(fileName: string): string {
+  const base = basename(fileName)
+  if (base !== fileName) throw new Error('Invalid board file name')
+  if (fileName.includes('\0') || fileName.includes('/') || fileName.includes('\\')) {
+    throw new Error('Invalid board file name')
+  }
+  if (!fileName.endsWith(BOARD_FILE_EXT)) throw new Error('Invalid board file name')
+  if (!/^[\w.-]+\.cxboard\.json$/.test(fileName)) throw new Error('Invalid board file name')
+  return fileName
+}
+
 function boardPath(fileName: string): string {
-  return join(requireRoot(), fileName)
+  return join(requireRoot(), assertSafeBoardFileName(fileName))
 }
 
 export function pickBoardsRootFolder(): Promise<string | null> {

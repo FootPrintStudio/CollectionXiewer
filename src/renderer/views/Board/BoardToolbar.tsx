@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { BOARD_ALIGN_OPTIONS, type BoardAlignMode } from '../../lib/boardLayout'
 import { useBoardStore } from '../../store/boardStore'
 import { useAppStore } from '../../store/appStore'
@@ -12,13 +13,31 @@ export function BoardToolbar({
   galleryStripOpen = true,
   onToggleGalleryStrip
 }: BoardToolbarProps = {}) {
-  const document = useBoardStore((s) => s.document)
-  const activeFile = useBoardStore((s) => s.activeFile)
-  const tool = useBoardStore((s) => s.tool)
-  const selection = useBoardStore((s) => s.selection)
-  const selectionAnchorId = useBoardStore((s) => s.selectionAnchorId)
-  const saving = useBoardStore((s) => s.saving)
-  const dirty = useBoardStore((s) => s.dirty)
+  const {
+    document,
+    activeFile,
+    tool,
+    selection,
+    selectionAnchorId,
+    saving,
+    dirty,
+    undoStack,
+    redoStack,
+    saveError
+  } = useBoardStore(
+    useShallow((s) => ({
+      document: s.document,
+      activeFile: s.activeFile,
+      tool: s.tool,
+      selection: s.selection,
+      selectionAnchorId: s.selectionAnchorId,
+      saving: s.saving,
+      dirty: s.dirty,
+      undoStack: s.undoStack,
+      redoStack: s.redoStack,
+      saveError: s.saveError
+    }))
+  )
   const setTool = useBoardStore((s) => s.setTool)
   const setMainView = useAppStore((s) => s.setMainView)
   const duplicateSelected = useBoardStore((s) => s.duplicateSelected)
@@ -33,9 +52,6 @@ export function BoardToolbar({
   const ungroupSelection = useBoardStore((s) => s.ungroupSelection)
   const undo = useBoardStore((s) => s.undo)
   const redo = useBoardStore((s) => s.redo)
-  const undoStack = useBoardStore((s) => s.undoStack)
-  const redoStack = useBoardStore((s) => s.redoStack)
-  const saveError = useBoardStore((s) => s.saveError)
   const saveNow = useBoardStore((s) => s.saveNow)
   const focusAllItems = useBoardStore((s) => s.focusAllItems)
   const updateItem = useBoardStore((s) => s.updateItem)

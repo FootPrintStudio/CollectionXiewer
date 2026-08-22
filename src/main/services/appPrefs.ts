@@ -37,6 +37,10 @@ export function bumpTagGraphEpoch(): void {
   setPref(TAG_GRAPH_EPOCH, String(current + 1))
 }
 
+export function getTagGraphEpoch(): number {
+  return Number(getPref(TAG_GRAPH_EPOCH) ?? '0')
+}
+
 export function markFtsDirty(): void {
   setPref(FTS_DIRTY, '1')
 }

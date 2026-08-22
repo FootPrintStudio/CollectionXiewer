@@ -4,6 +4,7 @@ import { parseSearchQuery, type SearchResolveContext } from '../../shared/search
 import * as tags from './tags'
 import * as collections from './collections'
 import * as roots from './roots'
+import { invalidateIdentifierMatchCache } from './identifierMatch'
 
 type IdentifierRow = Identifier & { enabled: number }
 
@@ -82,6 +83,7 @@ export function createIdentifier(input: IdentifierInput): Identifier {
        VALUES (?, ?, ?, ?, ?, ?, 1)`
     )
     .run(label, icon, input.color, input.query_text.trim(), validated.astJson, max.n)
+  invalidateIdentifierMatchCache()
   return getIdentifier(Number(r.lastInsertRowid))!
 }
 
@@ -98,15 +100,18 @@ export function updateIdentifier(id: number, input: IdentifierInput): Identifier
        WHERE id = ?`
     )
     .run(label, icon, input.color, input.query_text.trim(), validated.astJson, id)
+  invalidateIdentifierMatchCache()
   return getIdentifier(id)!
 }
 
 export function deleteIdentifier(id: number): void {
   getDb().prepare(`DELETE FROM identifiers WHERE id = ?`).run(id)
+  invalidateIdentifierMatchCache()
 }
 
 export function setIdentifierEnabled(id: number, enabled: boolean): Identifier {
   getDb().prepare(`UPDATE identifiers SET enabled = ? WHERE id = ?`).run(enabled ? 1 : 0, id)
+  invalidateIdentifierMatchCache()
   return getIdentifier(id)!
 }
 
