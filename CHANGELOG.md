@@ -2,6 +2,23 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.5.0 — 2026-11-15
+
+### Added
+- Mint-native Theme setting (Desktop / Light / Dark) following Cinnamon style, appearance, and color
+- Media Variants on media details: link alternate files from gallery selection or disk, open, remove
+- Copy Tags and Subjects action: merge tags and subjects from a variant, sibling selection, or library file
+- Tag Obsidian page links under External Links (`obsidian://open?vault=&file=`) with vault/path modal
+- Linux AppImage-friendly Obsidian open: spawn Obsidian binary when no `x-scheme-handler/obsidian` is registered
+- Light Local API status in Settings (host:port and token file path)
+
+### Removed
+- In-app markdown wiki (UI, IPC, FTS, `wiki:` / `wiki:empty` search operators)
+- Retro/vault theming chrome in favor of Mint-native chrome
+
+### Fixed
+- Vault-root Obsidian note paths documented to require a leading slash (`/Note`)
+
 ## 1.4.0 — 2026-08-22
 
 ### Security
