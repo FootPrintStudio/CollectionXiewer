@@ -37,7 +37,8 @@ export function TagObsidianLinksSection({ tag, links, onLinksChange }: Props) {
           Obsidian pages
           <SectionHelp label="Obsidian pages help">
             Dedicated vault note links for this tag (under External links). Stored as{' '}
-            <code>obsidian://open</code> URIs and opened in Obsidian.
+            <code>obsidian://open</code> URIs and opened in Obsidian. Root notes need a leading
+            slash (<code>/Test File</code>).
           </SectionHelp>
         </p>
         <button
