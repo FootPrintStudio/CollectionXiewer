@@ -6,22 +6,15 @@
 
   --hud-bracket-size: 6px;
   --hud-bracket-weight: 1px;
-}
 
-[data-theme='vault'] {
-  color-scheme: dark;
+  /* Fallback Mint-Y light until desktop theme IPC applies */
+  color-scheme: light;
 
-  /* Monochrome tint — adjusted via preview hue slider */
-  --vault-tint-hue: 42;
-  --vault-tint-sat: 8%;
-  --vault-tint-sat-strong: 12%;
-  --vault-tint-sat-muted: 6%;
-
-  /* Typography */
-  --font-display: 'IM Fell English SC', 'Cormorant Garamond', serif;
-  --font-serif: 'Cormorant Garamond', 'Palatino Linotype', serif;
-  --font-sans: 'Cormorant Garamond', 'Palatino Linotype', serif;
-  --font-mono: 'Courier New', 'Liberation Mono', monospace;
+  --font-display: "Ubuntu", Cantarell, "Noto Sans", "DejaVu Sans", sans-serif;
+  --font-serif: "Ubuntu", Cantarell, "Noto Sans", "DejaVu Sans", sans-serif;
+  --font-sans: "Ubuntu", Cantarell, "Noto Sans", "DejaVu Sans", sans-serif;
+  --font-mono: ui-monospace, "Ubuntu Mono", "Liberation Mono", Menlo, monospace;
+  --font-ui-size: 10pt;
 
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
@@ -32,121 +25,91 @@
   --text-3xl: 1.625rem;
   --text-4xl: 2rem;
 
-  /* Geometry — softened ancient tech */
-  --radius-sm: 2px;
+  --radius-sm: 3px;
   --radius-md: 4px;
   --radius-lg: 6px;
-  --radius-xl: 10px;
+  --radius-xl: 8px;
   --radius-full: 9999px;
   --radius: var(--radius-md);
   --chip-radius: var(--radius-md);
-  --hud-frame-radius: 1px;
-  --hud-frame-radius-alt: var(--radius-lg);
+  --hud-frame-radius: var(--radius-sm);
+  --hud-frame-radius-alt: var(--radius-md);
 
-  /* Shadows */
-  --shadow-sm: 0 2px 12px rgb(0 0 0 / 0.6);
-  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.72);
-  --shadow-lg: 0 14px 36px rgb(0 0 0 / 0.82);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.12);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.14);
+  --shadow-lg: 0 8px 20px rgb(0 0 0 / 0.18);
   --shadow: var(--shadow-sm);
+  --shadow-card: none;
+  --shadow-dropdown: var(--shadow-md);
   --shadow-hud: var(--shadow-dropdown);
 
-  /* Stone void — desaturated monochrome (tinted via --vault-tint-hue) */
-  --color-bg: hsl(var(--vault-tint-hue) 4% 2%);
-  --color-bg-subtle: hsl(var(--vault-tint-hue) 4% 4%);
-  --color-surface: hsl(var(--vault-tint-hue) 5% 6%);
-  --color-surface-raised: hsl(var(--vault-tint-hue) 5% 8%);
-  --color-surface-overlay: hsl(var(--vault-tint-hue) 4% 2% / 0.95);
+  --color-bg: #f8f8f9;
+  --color-bg-subtle: #e8e8ea;
+  --color-surface: #f8f8f9;
+  --color-surface-raised: #ffffff;
+  --color-surface-overlay: #ffffff;
 
-  /* Text — pale stone on obsidian */
-  --color-text: hsl(var(--vault-tint-hue) 8% 92%);
-  --color-text-muted: hsl(var(--vault-tint-hue) 7% 76%);
-  --color-text-subtle: hsl(var(--vault-tint-hue) 6% 58%);
-  --color-text-inverse: hsl(var(--vault-tint-hue) 4% 4%);
+  --color-text: #303030;
+  --color-text-muted: #5c5c5c;
+  --color-text-subtle: #5c5c5c;
+  --color-text-inverse: #ffffff;
 
-  /* Borders — ash grey, legible edges */
-  --color-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 86% / 0.2);
-  --color-border-strong: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 90% / 0.34);
-  --color-border-focus: hsl(var(--vault-tint-hue) var(--vault-tint-sat-strong) 78%);
+  --color-border: #c8c8ce;
+  --color-border-strong: #a8a8ae;
+  --color-border-focus: #35a854;
 
-  /* Accent — muted stone gold */
-  --color-accent: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62%);
-  --color-accent-hover: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72%);
-  --color-accent-subtle: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62% / 0.14);
-  --color-accent-text: hsl(var(--vault-tint-hue) 4% 4%);
-  --color-accent-gold: hsl(var(--vault-tint-hue) var(--vault-tint-sat-strong) 78%);
-  --color-accent-pale: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 90%);
-  --color-accent-deep: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 48%);
-  --color-accent-ember: hsl(var(--vault-tint-hue) 10% 55%);
+  --color-accent: #35a854;
+  --color-accent-hover: #35a854;
+  --color-accent-subtle: color-mix(in srgb, #35a854 18%, transparent);
+  --color-accent-text: #ffffff;
+  --color-accent-gold: #35a854;
+  --color-accent-pale: color-mix(in srgb, #35a854 35%, #ffffff);
+  --color-accent-deep: #35a854;
+  --color-accent-ember: #35a854;
 
-  /* Semantic status */
-  --color-success: #708070;
-  --color-success-bg: rgb(112 128 112 / 0.14);
-  --color-success-border: rgb(112 128 112 / 0.34);
-  --color-success-text: #a8b8a8;
+  --color-success: #73d216;
+  --color-success-bg: rgb(115 210 22 / 0.12);
+  --color-success-border: rgb(115 210 22 / 0.35);
+  --color-success-text: #3d7a0c;
 
-  --color-warning: #a8a080;
-  --color-warning-bg: rgb(168 160 128 / 0.14);
-  --color-warning-border: rgb(168 160 128 / 0.34);
-  --color-warning-text: #ccc4a8;
+  --color-warning: #f27835;
+  --color-warning-bg: rgb(242 120 53 / 0.12);
+  --color-warning-border: rgb(242 120 53 / 0.35);
+  --color-warning-text: #a34a12;
 
-  --color-error: #a08078;
-  --color-error-bg: rgb(160 128 120 / 0.14);
-  --color-error-border: rgb(160 128 120 / 0.38);
-  --color-error-text: #c8a8a0;
+  --color-error: #fc4138;
+  --color-error-bg: rgb(252 65 56 / 0.12);
+  --color-error-border: rgb(252 65 56 / 0.35);
+  --color-error-text: #b01e18;
 
-  --color-info: #909088;
-  --color-info-bg: rgb(144 144 136 / 0.12);
-  --color-info-border: rgb(144 144 136 / 0.26);
-  --color-info-text: #c8c8c0;
+  --color-info: #1f9ede;
+  --color-info-bg: rgb(31 158 222 / 0.12);
+  --color-info-border: rgb(31 158 222 / 0.3);
+  --color-info-text: #0b6a9a;
 
-  /* Interactive */
-  --color-link: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 80%);
-  --color-link-hover: hsl(var(--vault-tint-hue) var(--vault-tint-sat) 88%);
+  --color-link: var(--color-accent);
+  --color-link-hover: var(--color-accent);
 
-  /* Elevation */
-  --shadow-card: 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.08), var(--vault-glow-soft);
-  --shadow-dropdown: 0 16px 40px rgb(0 0 0 / 0.85), 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 62% / 0.18), var(--vault-glow-soft);
-
-  /* Scrollbars */
   --scrollbar-track: var(--color-bg-subtle);
-  --scrollbar-track-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.08);
-  --scrollbar-thumb: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface-raised));
-  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-accent-hover) 55%, var(--color-surface-raised));
-  --scrollbar-thumb-border: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.1);
+  --scrollbar-track-border: var(--color-border);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  --scrollbar-thumb-border: transparent;
 
-  /* Atmosphere — static layers (animations disabled for GPU cost) */
-  --vault-grain-opacity: 0.05;
-  --vault-grain-blend: normal;
-  --vault-starfield:
-    radial-gradient(1px 1px at 18% 22%, hsl(var(--vault-tint-hue) 25% 92% / 0.22), transparent),
-    radial-gradient(1px 1px at 72% 68%, hsl(var(--vault-tint-hue) 20% 90% / 0.16), transparent),
-    radial-gradient(1.2px 1.2px at 48% 38%, hsl(var(--vault-tint-hue) 28% 94% / 0.2), transparent),
-    radial-gradient(1px 1px at 86% 18%, hsl(var(--vault-tint-hue) 22% 92% / 0.14), transparent);
-  --vault-vignette: radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / 0.55) 100%);
-  --vault-mist:
-    radial-gradient(ellipse 85% 50% at 50% -10%, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.06), transparent 55%);
-  --vault-nebula-edge: linear-gradient(180deg, hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.03), transparent 28%);
-  --vault-obelisk-beam: none;
-  --vault-scanlines: none;
-  --vault-carrier: none;
-  --vault-frequency-bars: none;
+  --vault-glow-soft: none;
+  --vault-glow-amber: none;
+  --vault-glow-text: none;
+  --vault-glow-inner: none;
+  --vault-glow-focus: 0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent);
 
-  /* Incandescent glow — single shadow where possible */
-  --vault-glow-soft: 0 0 24px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.1);
-  --vault-glow-amber: 0 0 16px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.28);
-  --vault-glow-text: 0 0 10px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.22);
-  --vault-glow-inner: inset 0 0 24px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 65% / 0.08);
-  --vault-glow-focus: 0 0 0 1px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.45), 0 0 22px hsl(var(--vault-tint-hue) var(--vault-tint-sat) 72% / 0.22);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%235c5c5c' stroke-width='1.2' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
 
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23c0bcae' stroke-width='1.2' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
-
-  /* App token aliases — keeps existing component styles working */
   --bg: var(--color-bg);
   --bg-elevated: var(--color-surface-raised);
   --bg-panel: var(--color-surface);
   --surface: var(--color-surface);
   --border: var(--color-border);
-  --border-dashed: hsl(var(--vault-tint-hue) var(--vault-tint-sat-muted) 78% / 0.14);
+  --border-dashed: var(--color-border);
   --border-strong: var(--color-border-strong);
   --text: var(--color-text);
   --text-muted: var(--color-text-muted);
@@ -162,4 +125,29 @@
   --danger: var(--color-error);
   --success: var(--color-success);
   --warning: var(--color-warning);
+}
+
+[data-theme='mint'][data-scheme='dark'] {
+  color-scheme: dark;
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 6px 18px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 28px rgb(0 0 0 / 0.55);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23a7a7ab' stroke-width='1.2' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+}
+
+/* Mint-L: slightly softer corners to echo traditional Cinnamon chrome */
+[data-theme='mint'][data-mint-style='l'] {
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+}
+
+/* Mint-Y / default: flat modern Cinnamon */
+[data-theme='mint'][data-mint-style='y'],
+[data-theme='mint'][data-mint-style='other'] {
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 }

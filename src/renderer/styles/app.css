@@ -1146,6 +1146,124 @@ body.panel-resize-active * {
   gap: 0.35rem;
 }
 
+.media-variants-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.media-variants-section__empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.media-variants-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.media-variant-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.media-variant-row__thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 2px;
+}
+
+.media-variant-row__thumb--empty {
+  background: var(--bg-panel);
+  border: 1px dashed var(--border);
+}
+
+.media-variant-row__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.media-variant-row__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-variant-row__icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.media-variant-row__missing {
+  font-size: 0.72rem;
+  color: var(--danger);
+}
+
+.media-variant-row__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.copy-tags-picker {
+  max-width: 420px;
+}
+
+.copy-tags-picker__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.copy-tags-picker__group {
+  margin-bottom: 0.75rem;
+}
+
+.copy-tags-picker__group-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.copy-tags-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.copy-tags-picker__item {
+  width: 100%;
+  text-align: left;
+}
+
+.copy-tags-picker__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .media-collections-section__chips {
   display: flex;
   flex-wrap: wrap;
@@ -2326,321 +2444,6 @@ body.panel-resize-active * {
   border: 1px solid var(--border);
 }
 
-.wiki-section {
-  margin: 0.75rem 0 0;
-  padding: 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-}
-
-.wiki-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.wiki-section__header .panel-title {
-  margin: 0;
-}
-
-.wiki-section__controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.wiki-section__status {
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--accent);
-}
-
-.wiki-section__hint {
-  margin: 0 0 0.5rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.wiki-section__hint code {
-  font-size: 0.68rem;
-  padding: 0.05rem 0.25rem;
-  border-radius: 3px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-}
-
-.wiki-editor {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  min-height: 200px;
-  background-color: var(--bg-panel);
-}
-
-.wiki-editor .cm-editor,
-.wiki-editor .cm-editor .cm-scroller {
-  background-color: var(--bg-panel);
-  color: var(--text);
-}
-
-.wiki-editor .cm-editor .cm-content,
-.wiki-editor .cm-editor .cm-line {
-  color: var(--text);
-  caret-color: var(--accent);
-}
-
-.wiki-editor .cm-editor.cm-focused {
-  outline: 1px solid var(--accent);
-  outline-offset: -1px;
-}
-
-.wiki-editor__loading {
-  margin: 0;
-  padding: 1rem 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.wiki-preview {
-  padding: 0.55rem 0.65rem;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  min-height: 200px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.wiki-preview--empty {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.wiki-preview h1,
-.wiki-preview h2,
-.wiki-preview h3 {
-  margin: 0.75rem 0 0.35rem;
-  line-height: 1.25;
-}
-
-.wiki-preview h1 {
-  font-size: 1.15rem;
-}
-
-.wiki-preview h2 {
-  font-size: 1rem;
-}
-
-.wiki-preview h3 {
-  font-size: 0.92rem;
-}
-
-.wiki-preview p {
-  margin: 0 0 0.5rem;
-}
-
-.wiki-preview ul,
-.wiki-preview ol {
-  margin: 0 0 0.5rem;
-  padding-left: 1.25rem;
-}
-
-.wiki-preview blockquote {
-  margin: 0 0 0.5rem;
-  padding-left: 0.65rem;
-  border-left: 3px solid var(--border);
-  color: var(--text-muted);
-}
-
-.wiki-preview pre {
-  margin: 0 0 0.5rem;
-  padding: 0.45rem;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  overflow-x: auto;
-  font-size: 0.78rem;
-}
-
-.wiki-preview code {
-  font-size: 0.8em;
-  padding: 0.05rem 0.2rem;
-  border-radius: 3px;
-  background: var(--bg-panel);
-}
-
-.wiki-preview pre code {
-  padding: 0;
-  background: none;
-}
-
-.wiki-preview a {
-  color: var(--accent);
-  cursor: pointer;
-}
-
-.wiki-preview a:hover {
-  text-decoration: underline;
-}
-
-.empty-hint {
-  color: var(--text-muted);
-  padding: 2rem;
-  text-align: center;
-}
-
-/* Tag connections (details panel) */
-.tag-connections-section {
-  margin: 0.75rem 0 1rem;
-  padding: 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-}
-
-.tag-connections-section__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
-}
-
-.tag-connections-section__header .panel-title {
-  margin: 0;
-}
-
-.tag-connections-section__add {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.55rem;
-}
-
-.tag-connections-section__hint {
-  margin: 0 0 0.65rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.tag-connections-section__empty {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.tag-connections-section__group + .tag-connections-section__group {
-  margin-top: 0.65rem;
-  padding-top: 0.55rem;
-  border-top: 1px dashed var(--border);
-}
-
-.tag-connections-section__group-title {
-  margin: 0 0 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.tag-connections-section__count {
-  font-weight: 500;
-  opacity: 0.75;
-}
-
-.tag-connections-section__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.tag-connection-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.35rem;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-}
-
-.tag-connection-row__badge {
-  flex-shrink: 0;
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.12rem 0.35rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-}
-
-.tag-connection-row__badge--hard {
-  color: #c45a2c;
-  border-color: #c45a2c55;
-  background: #c45a2c18;
-}
-
-.tag-connection-row__badge--soft {
-  color: #3a7ab8;
-  border-color: #3a7ab855;
-  background: #3a7ab818;
-}
-
-.tag-connection-row__target {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-}
-
-.tag-connection-row__chip {
-  max-width: 100%;
-}
-
-.tag-connection-row__missing {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  text-align: left;
-  cursor: pointer;
-  padding: 0.15rem 0;
-}
-
-.tag-connection-row__remove {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--text-muted);
-  padding: 0.1rem 0.25rem;
-}
-
-.tag-connection-row__remove:hover {
-  color: var(--text);
-}
-
 .tag-connection-kind-toggle {
   display: flex;
   gap: 0.35rem;
@@ -2821,9 +2624,17 @@ body.panel-resize-active * {
 }
 
 .tag-external-link-row__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.25;
+}
+
+.tag-external-link-row__obsidian-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .tag-external-link-row__url {

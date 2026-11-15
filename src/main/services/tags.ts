@@ -866,7 +866,6 @@ export function removeTag(id: number): void {
   }
 
   const tx = db.transaction(() => {
-    db.prepare(`DELETE FROM wiki_pages WHERE entity_type = 'tag' AND entity_id = ?`).run(id)
     db.prepare(`DELETE FROM tags_fts WHERE rowid = ?`).run(id)
     db.prepare(`DELETE FROM tags WHERE id = ?`).run(id)
   })

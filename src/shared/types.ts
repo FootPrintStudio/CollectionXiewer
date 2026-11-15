@@ -103,6 +103,22 @@ export interface MediaTag {
   tag?: Tag
 }
 
+/** Other media linked as a variant of the current item (same variant group). */
+export interface MediaVariantRef {
+  id: number
+  relative_path: string
+  kind: MediaKind
+  width: number | null
+  height: number | null
+  missing: number
+}
+
+export interface CopyTagsSubjectsResult {
+  subjectsCreated: number
+  tagsApplied: number
+  tagsSkipped: number
+}
+
 /** Persisted soft-link suggestion on a media item within a subject. */
 export interface Identifier {
   id: number
@@ -147,13 +163,6 @@ export interface CollectionMember {
   collection_id: number
   media_id: number
   sort_key: string
-}
-
-export interface WikiPage {
-  entity_type: 'tag' | 'media' | 'collection'
-  entity_id: number
-  body_md: string
-  updated_at: string
 }
 
 export interface SavedSearch {

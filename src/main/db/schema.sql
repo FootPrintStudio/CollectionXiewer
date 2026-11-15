@@ -133,14 +133,6 @@ CREATE TABLE IF NOT EXISTS collection_external_links (
   url TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS wiki_pages (
-  entity_type TEXT NOT NULL CHECK(entity_type IN ('tag', 'media', 'collection')),
-  entity_id INTEGER NOT NULL,
-  body_md TEXT NOT NULL DEFAULT '',
-  updated_at TEXT NOT NULL,
-  PRIMARY KEY (entity_type, entity_id)
-);
-
 CREATE TABLE IF NOT EXISTS saved_searches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -169,6 +161,18 @@ CREATE TABLE IF NOT EXISTS identifiers (
   enabled INTEGER NOT NULL DEFAULT 1
 );
 
+-- Media variants: undirected groups of alternate files (crops, formats, edits).
+CREATE TABLE IF NOT EXISTS media_variant_groups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS media_variant_members (
+  group_id INTEGER NOT NULL REFERENCES media_variant_groups(id) ON DELETE CASCADE,
+  media_id INTEGER NOT NULL UNIQUE REFERENCES media_items(id) ON DELETE CASCADE,
+  PRIMARY KEY (group_id, media_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_media_root ON media_items(root_id);
 CREATE INDEX IF NOT EXISTS idx_media_missing_kind ON media_items(missing, kind);
 CREATE INDEX IF NOT EXISTS idx_media_missing_mtime ON media_items(missing, mtime);
@@ -183,3 +187,4 @@ CREATE INDEX IF NOT EXISTS idx_tag_closure_descendant ON tag_closure(descendant_
 CREATE INDEX IF NOT EXISTS idx_collection_members_collection ON collection_members(collection_id);
 CREATE INDEX IF NOT EXISTS idx_collection_members_media ON collection_members(media_id);
 CREATE INDEX IF NOT EXISTS idx_subjects_media ON subjects(media_id);
+CREATE INDEX IF NOT EXISTS idx_media_variant_members_group ON media_variant_members(group_id);

@@ -207,6 +207,23 @@ function migrateHotIndexes(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_tag_closure_ancestor ON tag_closure(ancestor_id);
     CREATE INDEX IF NOT EXISTS idx_tag_closure_descendant ON tag_closure(descendant_id);
     CREATE INDEX IF NOT EXISTS idx_collection_members_collection ON collection_members(collection_id);
+    CREATE INDEX IF NOT EXISTS idx_media_variant_members_group ON media_variant_members(group_id);
+  `)
+}
+
+function migrateMediaVariants(database: Database.Database): void {
+  if (tableExists(database, 'media_variant_groups')) return
+  database.exec(`
+    CREATE TABLE media_variant_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE media_variant_members (
+      group_id INTEGER NOT NULL REFERENCES media_variant_groups(id) ON DELETE CASCADE,
+      media_id INTEGER NOT NULL UNIQUE REFERENCES media_items(id) ON DELETE CASCADE,
+      PRIMARY KEY (group_id, media_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_variant_members_group ON media_variant_members(group_id);
   `)
 }
 
@@ -249,6 +266,7 @@ function migrate(database: Database.Database): void {
   migrateMediaTagSuggestions(database)
   migrateCollectionSortOrder(database)
   migrateSubjectRegions(database)
+  migrateMediaVariants(database)
   migrateAppPrefs(database)
   migrateHotIndexes(database)
 
@@ -267,9 +285,7 @@ function migrate(database: Database.Database): void {
     );
   `)
 
-  database.exec(`
-    CREATE VIRTUAL TABLE IF NOT EXISTS media_wiki_fts USING fts5(body_md);
-  `)
+  dropWikiTables(database)
 
   if (shouldRebuildFts(database)) {
     rebuildFts(database)
@@ -322,18 +338,15 @@ export function rebuildFts(database: Database.Database = getDb()): void {
     insC.run(c.id, c.name, c.description_md ?? '')
   }
 
+}
+
+/** Remove legacy in-app markdown wiki tables (P2). */
+function dropWikiTables(database: Database.Database): void {
   if (tableExists(database, 'media_wiki_fts')) {
-    database.exec(`DELETE FROM media_wiki_fts`)
-    const wikiPages = database
-      .prepare(
-        `SELECT entity_id, body_md FROM wiki_pages
-         WHERE entity_type = 'media' AND length(trim(body_md)) > 0`
-      )
-      .all() as { entity_id: number; body_md: string }[]
-    const insW = database.prepare(`INSERT INTO media_wiki_fts(rowid, body_md) VALUES (?, ?)`)
-    for (const w of wikiPages) {
-      insW.run(w.entity_id, w.body_md)
-    }
+    database.exec(`DROP TABLE media_wiki_fts`)
+  }
+  if (tableExists(database, 'wiki_pages')) {
+    database.exec(`DROP TABLE wiki_pages`)
   }
 }
 

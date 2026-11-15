@@ -4,12 +4,10 @@ import { App } from './App'
 import { AppErrorBoundary } from './ui/AppErrorBoundary'
 import './styles/tokens.css'
 import './styles/app.css'
-import './styles/retro-chrome.css'
-import './styles/app-retro-overrides.css'
-import { initVaultPerformance } from './lib/initVaultPerformance'
+import './styles/mint-chrome.css'
+import { initAppTheme } from './lib/applyAppTheme'
 
-document.documentElement.dataset.theme = 'vault'
-initVaultPerformance()
+initAppTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

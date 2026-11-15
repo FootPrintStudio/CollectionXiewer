@@ -303,3 +303,18 @@ export function stopLocalApi(): void {
 export function getLocalApiToken(): string | null {
   return apiToken
 }
+
+/** Status for Settings UI — does not expose the session token. */
+export function getLocalApiStatus(): {
+  listening: boolean
+  host: string
+  port: number
+  tokenFile: string
+} {
+  return {
+    listening: server != null && apiToken != null,
+    host: LOCAL_API_HOST,
+    port: LOCAL_API_PORT,
+    tokenFile: join(getDataDir(), 'local-api.json')
+  }
+}

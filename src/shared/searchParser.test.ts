@@ -95,16 +95,5 @@ function parse(text: string) {
   assert.equal(errors.length, 0)
   assert.equal(ast.type, 'untagged')
 }
-{
-  const { ast, errors } = parse('wiki:empty')
-  assert.equal(errors.length, 0)
-  assert.equal(ast.type, 'wikiEmpty')
-}
-{
-  const { ast, errors } = parse('wiki:"motion"')
-  assert.equal(errors.length, 0)
-  assert.equal(ast.type, 'wiki')
-  if (ast.type === 'wiki') assert.equal(ast.query, 'motion')
-}
 
 console.log('searchParser.test.ts: all passed')

@@ -7,7 +7,6 @@ import * as mediaQuery from '../services/mediaQuery'
 import * as tags from '../services/tags'
 import * as tagGroups from '../services/tagGroups'
 import * as collections from '../services/collections'
-import * as wiki from '../services/wiki'
 import * as crop from '../services/crop'
 import * as thumbs from '../services/thumbs'
 import * as videoPoster from '../services/videoPoster'
@@ -31,12 +30,18 @@ import {
   getUpdaterStatus,
   quitAndInstall
 } from '../services/updater'
+import { readDesktopTheme, setDesktopThemeMainWindow } from '../services/desktopTheme'
+import type { ThemePreference } from '../../shared/desktopTheme'
+import * as mediaVariants from '../services/mediaVariants'
+import { getLocalApiStatus } from '../services/localApi'
+import { openExternalUrl } from '../services/openExternalUrl'
 
 let mainWindow: BrowserWindow | null = null
 
 export function setMainWindow(win: BrowserWindow | null): void {
   mainWindow = win
   boards.setBoardsMainWindow(win)
+  setDesktopThemeMainWindow(win)
 }
 
 export function registerIpcHandlers(): void {
@@ -56,6 +61,30 @@ export function registerIpcHandlers(): void {
   )
   ipcMain.handle('media:get', async (_e, id: number) =>
     backfillExoticRasterDimension(mediaQuery.getMedia(id))
+  )
+  ipcMain.handle('media:pick-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      properties: ['openFile'],
+      title: 'Choose a library media file'
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const found = mediaVariants.findMediaByAbsolutePath(result.filePaths[0])
+    if (!found) {
+      throw new Error(
+        'That file is not in the library. Add its folder as a watch root and wait for indexing.'
+      )
+    }
+    return backfillExoticRasterDimension(found)
+  })
+  ipcMain.handle('mediaVariants:list', (_e, mediaId: number) => mediaVariants.listVariants(mediaId))
+  ipcMain.handle('mediaVariants:link', (_e, mediaId: number, otherMediaId: number) => {
+    mediaVariants.linkVariants(mediaId, otherMediaId)
+  })
+  ipcMain.handle('mediaVariants:unlink', (_e, mediaId: number, otherMediaId: number) => {
+    mediaVariants.unlinkVariant(mediaId, otherMediaId)
+  })
+  ipcMain.handle('mediaTags:copyFrom', (_e, targetMediaId: number, sourceMediaId: number) =>
+    mediaVariants.copyTagsAndSubjects(targetMediaId, sourceMediaId)
   )
   ipcMain.handle(
     'media:search',
@@ -319,13 +348,6 @@ export function registerIpcHandlers(): void {
     return item
   })
 
-  ipcMain.handle('wiki:get', (_e, entityType: 'tag' | 'media' | 'collection', entityId: number) =>
-    wiki.getWiki(entityType, entityId)
-  )
-  ipcMain.handle('wiki:save', (_e, entityType: 'tag' | 'media' | 'collection', entityId: number, body: string) =>
-    wiki.saveWiki(entityType, entityId, body)
-  )
-
   ipcMain.handle('search:saved-list', () =>
     getDb().prepare(`SELECT * FROM saved_searches ORDER BY name`).all()
   )
@@ -359,18 +381,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('fs:delete', (_e, mediaId: number) => fsOps.deleteMediaFile(mediaId))
   ipcMain.handle('fs:reveal', (_e, mediaId: number) => fsOps.revealMedia(mediaId))
 
-  ipcMain.handle('shell:open-external', (_e, url: string) => {
-    let parsed: URL
-    try {
-      parsed = new URL(url)
-    } catch {
-      throw new Error('Invalid URL')
-    }
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('Only http(s) URLs can be opened')
-    }
-    return shell.openExternal(parsed.toString())
-  })
+  ipcMain.handle('shell:open-external', (_e, url: string) => openExternalUrl(url))
 
   ipcMain.handle('boards:get-root', () => boards.getBoardsRootPath())
   ipcMain.handle('boards:set-root', (_e, path: string | null) => {
@@ -396,6 +407,12 @@ export function registerIpcHandlers(): void {
     await boards.exportBoardPng(fileName, result.filePath)
     return result.filePath
   })
+
+  ipcMain.handle('desktop-theme:get', (_e, preference: ThemePreference) =>
+    readDesktopTheme(preference ?? 'desktop')
+  )
+
+  ipcMain.handle('local-api:status', () => getLocalApiStatus())
 
   ipcMain.handle('updater:get-state', () => getUpdaterStatus())
   ipcMain.handle('updater:check', () => checkForUpdates())

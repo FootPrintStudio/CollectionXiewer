@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import type { Identifier } from '../../shared/types'
+import type { ThemePreference } from '../../shared/desktopTheme'
 import { isIdentifierEditorLayerNode } from '../lib/modalLayer'
+import { getThemePreference, setThemePreference } from '../lib/applyAppTheme'
 import { useAppStore } from '../store/appStore'
 import { SettingsIdentifiersPanel } from './SettingsIdentifiersPanel'
 import { IdentifierEditorModal } from './IdentifierEditorModal'
@@ -20,6 +22,15 @@ export function SettingsMenu() {
   const [updateOpen, setUpdateOpen] = useState(false)
   const [updatePending, setUpdatePending] = useState(false)
   const [backupBusy, setBackupBusy] = useState(false)
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>
+    getThemePreference()
+  )
+  const [localApiStatus, setLocalApiStatus] = useState<{
+    listening: boolean
+    host: string
+    port: number
+    tokenFile: string
+  } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,6 +45,7 @@ export function SettingsMenu() {
   useEffect(() => {
     if (!open) return
     void window.collectionXiewer.video.toolsAvailable().then(setVideoToolsOk)
+    void window.collectionXiewer.localApi.status().then(setLocalApiStatus)
   }, [open])
 
   useEffect(() => {
@@ -115,6 +127,29 @@ export function SettingsMenu() {
               {updatePending ? ' (available)' : ''}
             </button>
             <h2 className="settings-menu__panel-title">Display</h2>
+            <div className="settings-menu__field">
+              <label className="settings-menu__field-label" htmlFor="cx-theme-preference">
+                Theme
+              </label>
+              <select
+                id="cx-theme-preference"
+                className="settings-menu__select"
+                value={themePreference}
+                onChange={(e) => {
+                  const next = e.target.value as ThemePreference
+                  setThemePreferenceState(next)
+                  void setThemePreference(next)
+                }}
+              >
+                <option value="desktop">Desktop (match desktop)</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <p className="settings-menu__toggle-hint">
+              Desktop follows Mint Themes (Style, Appearance, Color) and the system font. Light/Dark
+              keep your Mint accent and style while forcing appearance.
+            </p>
             <label className="settings-menu__toggle">
               <input
                 type="checkbox"
@@ -144,6 +179,23 @@ export function SettingsMenu() {
               </p>
             ) : null}
             <SettingsIdentifiersPanel onOpenEditor={openIdentifierEditor} />
+            <h2 className="settings-menu__panel-title">Local API</h2>
+            {localApiStatus ? (
+              <>
+                <p className="settings-menu__toggle-hint">
+                  {localApiStatus.listening ? 'Listening' : 'Not listening'} on{' '}
+                  <code>
+                    http://{localApiStatus.host}:{localApiStatus.port}
+                  </code>
+                </p>
+                <p className="settings-menu__toggle-hint">
+                  Session token file: <code>{localApiStatus.tokenFile}</code> (rewritten each app
+                  start — Oculus must re-read after restart).
+                </p>
+              </>
+            ) : (
+              <p className="settings-menu__toggle-hint">Loading API status…</p>
+            )}
             <h2 className="settings-menu__panel-title">Data</h2>
             <button
               type="button"

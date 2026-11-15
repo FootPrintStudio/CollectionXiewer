@@ -2,7 +2,6 @@ import { getDb } from '../db/database'
 import type { MediaItem, MediaListQuery, MediaSortOrder } from '../../shared/types'
 import { mediaSortOrderClause } from '../../shared/mediaSort'
 import { enrichMedia, enrichMediaWithCrop } from './mediaPaths'
-import { searchMediaWikiFts } from './wikiFts'
 import type { SearchNode } from '../../shared/searchAst'
 
 export interface SearchOptions {
@@ -262,10 +261,6 @@ function evalAst(node: SearchNode, options: SearchOptions): number[] | null {
       return mediaIdsForKind(node.kind)
     case 'principalTag':
       return mediaIdsForPrincipalTag(node.tagId)
-    case 'wiki':
-      return mediaIdsForWiki(node.query)
-    case 'wikiEmpty':
-      return mediaIdsForWikiEmpty()
     case 'untagged':
       return mediaIdsForUntagged()
     case 'path':
@@ -746,25 +741,6 @@ function mediaIdsForPrincipalTag(tagId: number): number[] {
          WHERE cpt.tag_id = ?`
       )
       .all(tagId) as { id: number }[]
-  ).map((r) => r.id)
-}
-
-function mediaIdsForWiki(query: string): number[] {
-  return searchMediaWikiFts(query)
-}
-
-function mediaIdsForWikiEmpty(): number[] {
-  return (
-    getDb()
-      .prepare(
-        `SELECT m.id FROM media_items m
-         WHERE m.missing = 0
-           AND NOT EXISTS (
-             SELECT 1 FROM wiki_pages w
-             WHERE w.entity_type = 'media' AND w.entity_id = m.id AND trim(w.body_md) != ''
-           )`
-      )
-      .all() as { id: number }[]
   ).map((r) => r.id)
 }
 

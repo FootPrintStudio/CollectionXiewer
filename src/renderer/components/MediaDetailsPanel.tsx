@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/appStore'
-import type { Collection, MediaItem, MediaTagSuggestion, Subject, Tag } from '../../shared/types'
-import { WikiEditor } from './WikiEditor'
+import type {
+  Collection,
+  MediaItem,
+  MediaTagSuggestion,
+  MediaVariantRef,
+  Subject,
+  Tag
+} from '../../shared/types'
 import { NewSubjectModal } from '../ui/NewSubjectModal'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { SubjectSection } from './SubjectSection'
 import { MediaDetailsCollectionsSection } from './MediaDetailsCollectionsSection'
+import { MediaDetailsVariantsSection } from './MediaDetailsVariantsSection'
+import {
+  CopyTagsSubjectsPicker,
+  type CopySourceChoice
+} from './CopyTagsSubjectsPicker'
 import { SectionHelp } from '../ui/SectionHelp'
 import { isUniversalSubjectLabel } from '../../shared/subjects'
-import { showError } from '../store/toastStore'
+import { showError, showToast } from '../store/toastStore'
 import {
   basenameFromRelativePath,
   dirnameFromRelativePath,
@@ -20,6 +31,7 @@ import {
 
 export function MediaDetailsPanel() {
   const selectedMediaId = useAppStore((s) => s.selectedMediaId)
+  const selectedMediaIds = useAppStore((s) => s.selectedMediaIds)
   const mainView = useAppStore((s) => s.mainView)
   const mediaTagsRevision = useAppStore((s) => s.mediaTagsRevision)
   const subjectsRevision = useAppStore((s) => s.subjectsRevision)
@@ -51,6 +63,14 @@ export function MediaDetailsPanel() {
     label: string
   } | null>(null)
   const [confirmDeleteMedia, setConfirmDeleteMedia] = useState(false)
+  const [variantsRevision, setVariantsRevision] = useState(0)
+  const [variants, setVariants] = useState<MediaVariantRef[]>([])
+  const [copyPickerOpen, setCopyPickerOpen] = useState(false)
+  const [confirmCopy, setConfirmCopy] = useState<{
+    sourceId: number
+    label: string
+  } | null>(null)
+  const [copyBusy, setCopyBusy] = useState(false)
 
   const load = useCallback(async (id: number, cancelled?: () => boolean) => {
     const m = await window.collectionXiewer.media.get(id)
@@ -107,6 +127,20 @@ export function MediaDetailsPanel() {
       cancelled = true
     }
   }, [selectedMediaId, mediaTagsRevision, subjectsRevision, collectionMembersRevision, load])
+
+  useEffect(() => {
+    if (!selectedMediaId) {
+      setVariants([])
+      return
+    }
+    let cancelled = false
+    void window.collectionXiewer.mediaVariants.list(selectedMediaId).then((list) => {
+      if (!cancelled) setVariants(list)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedMediaId, variantsRevision])
 
   const savedFileNameStem = useMemo(() => {
     if (!media) return ''
@@ -247,6 +281,68 @@ export function MediaDetailsPanel() {
 
   const onSearchTags = (q: string) => window.collectionXiewer.tags.search(q)
 
+  const otherSelectedForCopy = selectedMediaIds.filter((id) => id !== selectedMediaId)
+
+  const resolveCopySource = async (choice: CopySourceChoice): Promise<{
+    sourceId: number
+    label: string
+  } | null> => {
+    if (choice.kind === 'mediaId') return { sourceId: choice.id, label: choice.label }
+    if (choice.kind === 'selection') {
+      if (otherSelectedForCopy.length !== 1) {
+        throw new Error('Select exactly one other gallery item to copy from.')
+      }
+      const sourceId = otherSelectedForCopy[0]!
+      const m = await window.collectionXiewer.media.get(sourceId)
+      if (!m) throw new Error('Selected media not found.')
+      return {
+        sourceId,
+        label: basenameFromRelativePath(m.relative_path)
+      }
+    }
+    const item = await window.collectionXiewer.media.pickFile()
+    if (!item) return null
+    return {
+      sourceId: item.id,
+      label: basenameFromRelativePath(item.relative_path)
+    }
+  }
+
+  const onCopySourceChosen = async (choice: CopySourceChoice) => {
+    setCopyPickerOpen(false)
+    try {
+      const resolved = await resolveCopySource(choice)
+      if (!resolved) return
+      setConfirmCopy(resolved)
+    } catch (e) {
+      showError(e)
+    }
+  }
+
+  const runCopyTagsSubjects = async () => {
+    if (!selectedMediaId || !confirmCopy) return
+    setCopyBusy(true)
+    try {
+      const result = await window.collectionXiewer.mediaTags.copyFrom(
+        selectedMediaId,
+        confirmCopy.sourceId
+      )
+      setConfirmCopy(null)
+      bumpMediaTagsRevision()
+      bumpSubjectsRevision()
+      showToast(
+        `Copied from “${confirmCopy.label}”: ${result.tagsApplied} tag(s), ${result.subjectsCreated} new subject(s)${
+          result.tagsSkipped ? `, ${result.tagsSkipped} already present` : ''
+        }.`,
+        'success'
+      )
+    } catch (e) {
+      showError(e)
+    } finally {
+      setCopyBusy(false)
+    }
+  }
+
   return (
     <div className="media-details-panel">
       <h2 className="media-details-panel__title">Media</h2>
@@ -327,6 +423,14 @@ export function MediaDetailsPanel() {
           ) : null}
           <button type="button" onClick={() => window.collectionXiewer.fs.reveal(media.id)}>
             Reveal in folder
+          </button>
+          <button
+            type="button"
+            disabled={copyBusy}
+            onClick={() => setCopyPickerOpen(true)}
+            title="Copy subjects and tags from another media item (e.g. a variant)"
+          >
+            Copy Tags and Subjects
           </button>
           <button type="button" className="danger" onClick={() => setConfirmDeleteMedia(true)}>
             Delete file
@@ -432,7 +536,34 @@ export function MediaDetailsPanel() {
         />
       )}
 
-      <WikiEditor entityType="media" entityId={selectedMediaId} />
+      <MediaDetailsVariantsSection
+        mediaId={selectedMediaId}
+        revision={variantsRevision}
+        onChanged={() => setVariantsRevision((n) => n + 1)}
+      />
+
+      {copyPickerOpen ? (
+        <CopyTagsSubjectsPicker
+          variants={variants}
+          otherSelectedCount={otherSelectedForCopy.length}
+          onChoose={(choice) => void onCopySourceChosen(choice)}
+          onCancel={() => setCopyPickerOpen(false)}
+        />
+      ) : null}
+
+      {confirmCopy ? (
+        <ConfirmDialog
+          title="Copy Tags and Subjects?"
+          message={`Copy subjects and tags from “${confirmCopy.label}” onto this media item? Existing tags are kept; missing subjects are created.`}
+          confirmLabel={copyBusy ? 'Copying…' : 'Copy'}
+          onCancel={() => {
+            if (!copyBusy) setConfirmCopy(null)
+          }}
+          onConfirm={() => {
+            if (!copyBusy) void runCopyTagsSubjects()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
