@@ -34,6 +34,7 @@ import { readDesktopTheme, setDesktopThemeMainWindow } from '../services/desktop
 import type { ThemePreference } from '../../shared/desktopTheme'
 import * as mediaVariants from '../services/mediaVariants'
 import { getLocalApiStatus } from '../services/localApi'
+import { openExternalUrl } from '../services/openExternalUrl'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -380,22 +381,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('fs:delete', (_e, mediaId: number) => fsOps.deleteMediaFile(mediaId))
   ipcMain.handle('fs:reveal', (_e, mediaId: number) => fsOps.revealMedia(mediaId))
 
-  ipcMain.handle('shell:open-external', (_e, url: string) => {
-    let parsed: URL
-    try {
-      parsed = new URL(url)
-    } catch {
-      throw new Error('Invalid URL')
-    }
-    if (
-      parsed.protocol !== 'http:' &&
-      parsed.protocol !== 'https:' &&
-      parsed.protocol !== 'obsidian:'
-    ) {
-      throw new Error('Only http(s) and obsidian:// URLs can be opened')
-    }
-    return shell.openExternal(parsed.toString())
-  })
+  ipcMain.handle('shell:open-external', (_e, url: string) => openExternalUrl(url))
 
   ipcMain.handle('boards:get-root', () => boards.getBoardsRootPath())
   ipcMain.handle('boards:set-root', (_e, path: string | null) => {

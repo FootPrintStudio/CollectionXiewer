@@ -5,6 +5,7 @@ import { formatTagLabel } from '../../shared/tagDisplay'
 import { displayObsidianLink, isObsidianUrl } from '../../shared/obsidianLinks'
 import { ObsidianLinkModal } from '../ui/ObsidianLinkModal'
 import { SectionHelp } from '../ui/SectionHelp'
+import { showError } from '../store/toastStore'
 
 interface Props {
   tag: Tag
@@ -26,7 +27,7 @@ export function TagObsidianLinksSection({ tag, links, onLinksChange }: Props) {
   }
 
   const open = (url: string) => {
-    void window.collectionXiewer.shell.openExternal(url)
+    void window.collectionXiewer.shell.openExternal(url).catch((e) => showError(e))
   }
 
   return (

@@ -5,14 +5,17 @@ export type ObsidianOpenTarget = {
   file: string
 }
 
-/** `obsidian://open?vault=Name&file=path/to/Note` (file may be URL-encoded). */
+/**
+ * `obsidian://open?vault=Name&file=path/to/Note`
+ * Uses encodeURIComponent (`%20`, not `+`) per Obsidian URI docs.
+ */
 export function buildObsidianOpenUrl(vault: string, file: string): string {
   const v = vault.trim()
   const f = file.trim().replace(/\\/g, '/')
-  const params = new URLSearchParams()
-  if (v) params.set('vault', v)
-  params.set('file', f)
-  return `obsidian://open?${params.toString()}`
+  const parts: string[] = []
+  if (v) parts.push(`vault=${encodeURIComponent(v)}`)
+  parts.push(`file=${encodeURIComponent(f)}`)
+  return `obsidian://open?${parts.join('&')}`
 }
 
 export function isObsidianUrl(url: string): boolean {
