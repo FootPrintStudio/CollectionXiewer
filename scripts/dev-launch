@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# TEMP / DEV-ONLY — easy local launch helper for CollectionXiewer testing.
+# Not shipped in AppImage builds; safe to delete once a permanent launcher exists.
+# Runs the Electron/dev build via the repo's npm script (electron-vite).
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ ! -d node_modules ]]; then
+  echo "dev-launch: node_modules missing — run npm install first." >&2
+  exit 1
+fi
+
+exec npm run dev -- "$@"
