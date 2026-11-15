@@ -15,6 +15,7 @@ import type {
 import type { SearchNode } from '../shared/searchAst'
 import type { BoardDocument, BoardSummary } from '../shared/boardSchema'
 import type { UpdaterStatus } from '../shared/updaterTypes'
+import type { DesktopThemeSnapshot, ThemePreference } from '../shared/desktopTheme'
 
 const api = {
   roots: {
@@ -252,6 +253,17 @@ const api = {
     getDataDir: () => ipcRenderer.invoke('db:get-data-dir') as Promise<string>,
     openDataFolder: () => ipcRenderer.invoke('db:open-data-folder') as Promise<void>,
     backup: () => ipcRenderer.invoke('db:backup') as Promise<string | null>
+  },
+  desktopTheme: {
+    get: (preference: ThemePreference) =>
+      ipcRenderer.invoke('desktop-theme:get', preference) as Promise<DesktopThemeSnapshot>,
+    onChanged: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('desktop-theme:changed', listener)
+      return () => {
+        ipcRenderer.removeListener('desktop-theme:changed', listener)
+      }
+    }
   }
 }
 

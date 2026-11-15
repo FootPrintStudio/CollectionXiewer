@@ -16,7 +16,7 @@ Local-first media browser and viewer for art/reference archives on Linux, built 
 - Advanced text search with saved searches
 - CodeMirror 6 wiki markdown with tag/collection/external links
 - Image (incl. BMP, TGA, and HEIC), motion (GIF/WebP/APNG), and video file-level tags
-- Vault theme with performance-aware atmosphere FX
+- Mint-native chrome (Desktop / Light / Dark) following Cinnamon theme style, appearance, and color
 - In-app updates via GitHub Releases (Linux AppImage)
 
 ## Search syntax

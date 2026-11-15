@@ -31,12 +31,15 @@ import {
   getUpdaterStatus,
   quitAndInstall
 } from '../services/updater'
+import { readDesktopTheme, setDesktopThemeMainWindow } from '../services/desktopTheme'
+import type { ThemePreference } from '../../shared/desktopTheme'
 
 let mainWindow: BrowserWindow | null = null
 
 export function setMainWindow(win: BrowserWindow | null): void {
   mainWindow = win
   boards.setBoardsMainWindow(win)
+  setDesktopThemeMainWindow(win)
 }
 
 export function registerIpcHandlers(): void {
@@ -396,6 +399,10 @@ export function registerIpcHandlers(): void {
     await boards.exportBoardPng(fileName, result.filePath)
     return result.filePath
   })
+
+  ipcMain.handle('desktop-theme:get', (_e, preference: ThemePreference) =>
+    readDesktopTheme(preference ?? 'desktop')
+  )
 
   ipcMain.handle('updater:get-state', () => getUpdaterStatus())
   ipcMain.handle('updater:check', () => checkForUpdates())

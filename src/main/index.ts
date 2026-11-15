@@ -16,6 +16,10 @@ import { rebuildAllClosure } from './services/tags'
 import { migrateVirtualCrops } from './services/crop'
 import { ensureTagClosureCurrent } from './services/appPrefs'
 import { startLocalApi, stopLocalApi } from './services/localApi'
+import {
+  startDesktopThemeMonitor,
+  stopDesktopThemeMonitor
+} from './services/desktopTheme'
 
 registerMediaScheme()
 
@@ -80,6 +84,7 @@ app.whenReady().then(async () => {
   startLocalApi()
   initUpdater()
   initWatchers()
+  startDesktopThemeMonitor()
   createWindow()
   // Soft-missing for files removed while the app was closed (non-blocking).
   try {
@@ -104,6 +109,7 @@ app.on('before-quit', (e) => {
   quitting = true
   void (async () => {
     try {
+      stopDesktopThemeMonitor()
       stopLocalApi()
       await drainIndexQueue()
       await stopAllWatchersAsync()

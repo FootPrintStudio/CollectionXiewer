@@ -1,0 +1,212 @@
+/* Linux Mint / Cinnamon-friendly chrome — flat panels, system UI fonts, no atmosphere. */
+
+html,
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-ui-size);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+body {
+  background-image: none;
+}
+
+body::before,
+body::after {
+  content: none !important;
+}
+
+.app-shell {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--color-bg);
+}
+
+.library-panel,
+.details-panel {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.gallery-toolbar,
+.gallery-toolbar__row--search,
+.gallery-toolbar__row--gallery,
+.bulk-tag-bar,
+.gallery-area,
+.previewer-toolbar,
+.slideshow-overlay__bar,
+.saved-searches__panel,
+.tag-tree-toolbar,
+.media-details-section,
+.tag-appearance-section,
+.tag-connections-section,
+.tag-external-links-section {
+  background-color: var(--color-surface);
+}
+
+.gallery-toolbar {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gallery-toolbar__row--search {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.main-column {
+  background-color: var(--color-bg);
+}
+
+.thumb-cell__media,
+.thumb-cell__placeholder,
+.previewer-media-full,
+.slideshow-overlay__stage {
+  background-color: #000;
+}
+
+.modal-backdrop {
+  background-color: rgb(0 0 0 / 0.45);
+}
+
+.slideshow-overlay {
+  background-color: rgb(0 0 0 / 0.92);
+}
+
+button,
+.toolbar-select,
+input[type='text'],
+input[type='search'],
+input[type='number'],
+textarea,
+select {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+button:hover,
+.toolbar-select:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  background-color: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface-raised));
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 65%, transparent);
+  outline-offset: 1px;
+}
+
+button.primary,
+.library-panel-tabs button.primary,
+.library-panel-tabs button[aria-selected='true'],
+.details-panel-tabs button.primary,
+.details-panel-tabs button[aria-selected='true'] {
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface-raised));
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.panel-chrome-title,
+.search-bar__title,
+.modal-title,
+.settings-menu__panel-title,
+.gallery-toolbar__field-label,
+.panel-title,
+.readout-label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  font-style: normal;
+  color: var(--color-text);
+  text-shadow: none;
+  border-bottom-color: var(--color-border);
+}
+
+.library-panel-tabs,
+.details-panel-tabs {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.library-panel-tabs button,
+.details-panel-tabs button {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-style: normal;
+  letter-spacing: normal;
+  color: var(--color-text-muted);
+  background: transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.list-item,
+.watch-root-tree__label,
+.watch-root-tree__scan,
+.search-bar__help,
+.search-bar__chip {
+  font-family: var(--font-sans);
+  font-style: normal;
+}
+
+.list-item:hover,
+.watch-root-tree__row:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-color: transparent;
+}
+
+.list-item.active {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.search-bar__input,
+.search-autocomplete,
+.settings-menu__panel,
+.saved-searches__panel {
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.panel-resize-handle:hover::after,
+.panel-resize-handle--active::after {
+  background: var(--color-accent);
+  box-shadow: none;
+}
+
+.settings-menu__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.settings-menu__field-label {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.settings-menu__select {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
