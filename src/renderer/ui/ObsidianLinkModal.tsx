@@ -79,7 +79,10 @@ export function ObsidianLinkModal({ entityLabel, link, onClose, onSave }: Props)
         <p className="modal-hint">
           Opens the note in Obsidian via{' '}
           <code>obsidian://open?vault=…&amp;file=…</code>. Vault name is optional if only one vault
-          is open.
+          is open. Notes at the vault root need a leading slash (
+          <code>/Test File</code>), not just the title (
+          <code>Test File</code>). Nested notes use folder paths (
+          <code>Characters/Hero</code>). No <code>.md</code> suffix required.
         </p>
 
         <div className="field">
@@ -115,7 +118,7 @@ export function ObsidianLinkModal({ entityLabel, link, onClose, onSave }: Props)
             value={file}
             onChange={(e) => setFile(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void submit()}
-            placeholder="Folder/Note name (no .md required)"
+            placeholder="/Root Note or Folder/Note"
             autoComplete="off"
             spellCheck={false}
           />
