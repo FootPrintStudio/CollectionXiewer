@@ -207,6 +207,23 @@ function migrateHotIndexes(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_tag_closure_ancestor ON tag_closure(ancestor_id);
     CREATE INDEX IF NOT EXISTS idx_tag_closure_descendant ON tag_closure(descendant_id);
     CREATE INDEX IF NOT EXISTS idx_collection_members_collection ON collection_members(collection_id);
+    CREATE INDEX IF NOT EXISTS idx_media_variant_members_group ON media_variant_members(group_id);
+  `)
+}
+
+function migrateMediaVariants(database: Database.Database): void {
+  if (tableExists(database, 'media_variant_groups')) return
+  database.exec(`
+    CREATE TABLE media_variant_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE media_variant_members (
+      group_id INTEGER NOT NULL REFERENCES media_variant_groups(id) ON DELETE CASCADE,
+      media_id INTEGER NOT NULL UNIQUE REFERENCES media_items(id) ON DELETE CASCADE,
+      PRIMARY KEY (group_id, media_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_variant_members_group ON media_variant_members(group_id);
   `)
 }
 
@@ -249,6 +266,7 @@ function migrate(database: Database.Database): void {
   migrateMediaTagSuggestions(database)
   migrateCollectionSortOrder(database)
   migrateSubjectRegions(database)
+  migrateMediaVariants(database)
   migrateAppPrefs(database)
   migrateHotIndexes(database)
 

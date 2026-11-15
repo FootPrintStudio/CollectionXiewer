@@ -8,6 +8,7 @@ Local-first media browser and viewer for art/reference archives on Linux, built 
 - Rich tagging: hard/soft connections, logical groups, disambiguation, hierarchy search
 - Tag delete from library (right-click) with impact confirmation
 - Drag tags from the library onto the search bar to append `tag:slug` filters
+- Media variants (link alternate files) and Copy Tags and Subjects in media details
 - Collections with principal tags and manual ordering in the library panel
 - **Design boards** — free-form canvas with media refs, notes, grouping, undo/redo, PNG export
 - **Identifiers** — coloured Unicode icons on gallery thumbs driven by saved search queries

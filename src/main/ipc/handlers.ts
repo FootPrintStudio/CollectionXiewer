@@ -33,6 +33,7 @@ import {
 } from '../services/updater'
 import { readDesktopTheme, setDesktopThemeMainWindow } from '../services/desktopTheme'
 import type { ThemePreference } from '../../shared/desktopTheme'
+import * as mediaVariants from '../services/mediaVariants'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -59,6 +60,30 @@ export function registerIpcHandlers(): void {
   )
   ipcMain.handle('media:get', async (_e, id: number) =>
     backfillExoticRasterDimension(mediaQuery.getMedia(id))
+  )
+  ipcMain.handle('media:pick-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      properties: ['openFile'],
+      title: 'Choose a library media file'
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const found = mediaVariants.findMediaByAbsolutePath(result.filePaths[0])
+    if (!found) {
+      throw new Error(
+        'That file is not in the library. Add its folder as a watch root and wait for indexing.'
+      )
+    }
+    return backfillExoticRasterDimension(found)
+  })
+  ipcMain.handle('mediaVariants:list', (_e, mediaId: number) => mediaVariants.listVariants(mediaId))
+  ipcMain.handle('mediaVariants:link', (_e, mediaId: number, otherMediaId: number) => {
+    mediaVariants.linkVariants(mediaId, otherMediaId)
+  })
+  ipcMain.handle('mediaVariants:unlink', (_e, mediaId: number, otherMediaId: number) => {
+    mediaVariants.unlinkVariant(mediaId, otherMediaId)
+  })
+  ipcMain.handle('mediaTags:copyFrom', (_e, targetMediaId: number, sourceMediaId: number) =>
+    mediaVariants.copyTagsAndSubjects(targetMediaId, sourceMediaId)
   )
   ipcMain.handle(
     'media:search',

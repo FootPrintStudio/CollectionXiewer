@@ -103,6 +103,22 @@ export interface MediaTag {
   tag?: Tag
 }
 
+/** Other media linked as a variant of the current item (same variant group). */
+export interface MediaVariantRef {
+  id: number
+  relative_path: string
+  kind: MediaKind
+  width: number | null
+  height: number | null
+  missing: number
+}
+
+export interface CopyTagsSubjectsResult {
+  subjectsCreated: number
+  tagsApplied: number
+  tagsSkipped: number
+}
+
 /** Persisted soft-link suggestion on a media item within a subject. */
 export interface Identifier {
   id: number

@@ -10,7 +10,9 @@ import type {
   Tag,
   TagGroup,
   CollectionExternalLink,
-  SubjectUpdatePatch
+  SubjectUpdatePatch,
+  MediaVariantRef,
+  CopyTagsSubjectsResult
 } from '../shared/types'
 import type { SearchNode } from '../shared/searchAst'
 import type { BoardDocument, BoardSummary } from '../shared/boardSchema'
@@ -28,6 +30,7 @@ const api = {
   media: {
     list: (query?: MediaListQuery) => ipcRenderer.invoke('media:list', query ?? {}),
     get: (id: number) => ipcRenderer.invoke('media:get', id),
+    pickFile: () => ipcRenderer.invoke('media:pick-file') as Promise<MediaItem | null>,
     search: (
       ast: SearchNode,
       limit?: number,
@@ -35,6 +38,14 @@ const api = {
       sortOrder?: MediaSortOrder,
       collectionId?: number | null
     ) => ipcRenderer.invoke('media:search', JSON.stringify(ast), limit, offset, sortOrder, collectionId)
+  },
+  mediaVariants: {
+    list: (mediaId: number) =>
+      ipcRenderer.invoke('mediaVariants:list', mediaId) as Promise<MediaVariantRef[]>,
+    link: (mediaId: number, otherMediaId: number) =>
+      ipcRenderer.invoke('mediaVariants:link', mediaId, otherMediaId) as Promise<void>,
+    unlink: (mediaId: number, otherMediaId: number) =>
+      ipcRenderer.invoke('mediaVariants:unlink', mediaId, otherMediaId) as Promise<void>
   },
   thumb: {
     get: (mediaId: number, size: number) => ipcRenderer.invoke('thumb:get', mediaId, size) as Promise<string | null>
@@ -102,6 +113,8 @@ const api = {
       ipcRenderer.invoke('mediaTags:apply', mediaId, tagId, subjectId),
     remove: (mediaId: number, tagId: number, subjectId: number | null) =>
       ipcRenderer.invoke('mediaTags:remove', mediaId, tagId, subjectId),
+    copyFrom: (targetMediaId: number, sourceMediaId: number) =>
+      ipcRenderer.invoke('mediaTags:copyFrom', targetMediaId, sourceMediaId) as Promise<CopyTagsSubjectsResult>,
     move: (mediaId: number, tagId: number, fromSubjectId: number, toSubjectId: number) =>
       ipcRenderer.invoke('mediaTags:move', mediaId, tagId, fromSubjectId, toSubjectId),
     bulkApply: (

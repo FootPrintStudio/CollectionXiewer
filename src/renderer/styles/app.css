@@ -1146,6 +1146,124 @@ body.panel-resize-active * {
   gap: 0.35rem;
 }
 
+.media-variants-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.media-variants-section__empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.media-variants-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.media-variant-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.media-variant-row__thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: #000;
+  border-radius: 2px;
+}
+
+.media-variant-row__thumb--empty {
+  background: var(--bg-panel);
+  border: 1px dashed var(--border);
+}
+
+.media-variant-row__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.media-variant-row__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-variant-row__icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.media-variant-row__missing {
+  font-size: 0.72rem;
+  color: var(--danger);
+}
+
+.media-variant-row__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.copy-tags-picker {
+  max-width: 420px;
+}
+
+.copy-tags-picker__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.copy-tags-picker__group {
+  margin-bottom: 0.75rem;
+}
+
+.copy-tags-picker__group-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.copy-tags-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.copy-tags-picker__item {
+  width: 100%;
+  text-align: left;
+}
+
+.copy-tags-picker__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .media-collections-section__chips {
   display: flex;
   flex-wrap: wrap;
