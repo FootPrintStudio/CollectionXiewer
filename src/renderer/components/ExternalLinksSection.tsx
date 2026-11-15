@@ -84,7 +84,7 @@ export function ExternalLinksSection({
 
   const remove = async (id: number) => {
     await onRemoveLink(id)
-    onLinksChange(links.filter((l) => l.id !== id))
+    await refresh()
   }
 
   const open = (url: string) => {

@@ -15,7 +15,7 @@ Local-first media browser and viewer for art/reference archives on Linux, built 
 - Grid, column masonry, and horizontal row-normalized masonry galleries (paginated load-more)
 - Large previewer with non-destructive free-form crop and export
 - Advanced text search with saved searches
-- CodeMirror 6 wiki markdown with tag/collection/external links
+- Tag external links including dedicated Obsidian page links (`obsidian://open`)
 - Image (incl. BMP, TGA, and HEIC), motion (GIF/WebP/APNG), and video file-level tags
 - Mint-native chrome (Desktop / Light / Dark) following Cinnamon theme style, appearance, and color
 - In-app updates via GitHub Releases (Linux AppImage)
@@ -33,7 +33,6 @@ Queries are typed in the search bar (parsed by `src/shared/searchParser.ts`, exe
 - `principal:slug` — principal tag on a collection
 - `folder:"/path/to/root"` — under a watch folder
 - `name:pattern` — path/filename globs (`*`, `?`)
-- `wiki:"phrase"` / `wiki:empty` — media wiki full-text or empty wiki
 - `untagged:` — no tags on media
 - `kind:image` — media kind (`image`, `motion`, `video`)
 - `AND`, `OR`, `NOT`, `( )` — boolean logic

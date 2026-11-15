@@ -7,8 +7,6 @@ export type SearchNode =
   | { type: 'collection'; collectionId: number }
   | { type: 'kind'; kind: string }
   | { type: 'principalTag'; tagId: number }
-  | { type: 'wiki'; query: string }
-  | { type: 'wikiEmpty' }
   | { type: 'untagged' }
   | { type: 'path'; pattern: string; mode: 'substring' | 'glob' }
   | { type: 'folder'; rootId?: number; pathPrefix?: string }

@@ -285,9 +285,7 @@ function migrate(database: Database.Database): void {
     );
   `)
 
-  database.exec(`
-    CREATE VIRTUAL TABLE IF NOT EXISTS media_wiki_fts USING fts5(body_md);
-  `)
+  dropWikiTables(database)
 
   if (shouldRebuildFts(database)) {
     rebuildFts(database)
@@ -340,18 +338,15 @@ export function rebuildFts(database: Database.Database = getDb()): void {
     insC.run(c.id, c.name, c.description_md ?? '')
   }
 
+}
+
+/** Remove legacy in-app markdown wiki tables (P2). */
+function dropWikiTables(database: Database.Database): void {
   if (tableExists(database, 'media_wiki_fts')) {
-    database.exec(`DELETE FROM media_wiki_fts`)
-    const wikiPages = database
-      .prepare(
-        `SELECT entity_id, body_md FROM wiki_pages
-         WHERE entity_type = 'media' AND length(trim(body_md)) > 0`
-      )
-      .all() as { entity_id: number; body_md: string }[]
-    const insW = database.prepare(`INSERT INTO media_wiki_fts(rowid, body_md) VALUES (?, ?)`)
-    for (const w of wikiPages) {
-      insW.run(w.entity_id, w.body_md)
-    }
+    database.exec(`DROP TABLE media_wiki_fts`)
+  }
+  if (tableExists(database, 'wiki_pages')) {
+    database.exec(`DROP TABLE wiki_pages`)
   }
 }
 

@@ -152,8 +152,6 @@ async function fetchSuggestions(
           insert: r.path
         }))
     }
-    case 'wiki':
-      return []
     default:
       return []
   }

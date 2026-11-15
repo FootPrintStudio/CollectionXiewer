@@ -186,12 +186,6 @@ const api = {
     clear: (mediaId: number) => ipcRenderer.invoke('crop:clear', mediaId),
     export: (mediaId: number) => ipcRenderer.invoke('crop:export', mediaId)
   },
-  wiki: {
-    get: (entityType: 'tag' | 'media' | 'collection', entityId: number) =>
-      ipcRenderer.invoke('wiki:get', entityType, entityId),
-    save: (entityType: 'tag' | 'media' | 'collection', entityId: number, body: string) =>
-      ipcRenderer.invoke('wiki:save', entityType, entityId, body)
-  },
   identifiers: {
     list: () => ipcRenderer.invoke('identifiers:list') as Promise<Identifier[]>,
     create: (input: { label: string; icon: string; color: string; query_text: string }) =>
@@ -277,6 +271,15 @@ const api = {
         ipcRenderer.removeListener('desktop-theme:changed', listener)
       }
     }
+  },
+  localApi: {
+    status: () =>
+      ipcRenderer.invoke('local-api:status') as Promise<{
+        listening: boolean
+        host: string
+        port: number
+        tokenFile: string
+      }>
   }
 }
 

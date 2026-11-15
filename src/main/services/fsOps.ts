@@ -4,7 +4,6 @@ import { shell } from 'electron'
 import { relative } from 'node:path'
 import { getDb } from '../db/database'
 import { getMedia } from './mediaQuery'
-import { removeMediaWikiFts } from './wikiFts'
 
 function sanitizeBaseName(name: string): string {
   const trimmed = name.trim().replace(/[/\\<>:"|?*\x00-\x1f]/g, '')
@@ -48,7 +47,6 @@ export async function deleteMediaFile(mediaId: number): Promise<void> {
   const media = getMedia(mediaId)
   if (!media) throw new Error('Media not found')
   await unlink(media.absolute_path)
-  removeMediaWikiFts(mediaId)
   const { clearPoster } = await import('./videoPoster')
   clearPoster(mediaId)
   getDb().prepare(`DELETE FROM media_items WHERE id = ?`).run(mediaId)

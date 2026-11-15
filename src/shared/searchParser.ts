@@ -176,13 +176,6 @@ class Parser {
         }
         return this.resolveFolder(value)
       }
-      case 'wiki': {
-        if (subjectGroup != null) {
-          this.fail('@subject applies to tag/suggested clauses only', this.pos)
-        }
-        if (value.toLowerCase() === 'empty') return { type: 'wikiEmpty' }
-        return { type: 'wiki', query: value }
-      }
       case 'untagged': {
         if (subjectGroup != null) {
           this.fail('@subject applies to tag/suggested clauses only', this.pos)
@@ -437,10 +430,6 @@ export function formatSearchQuery(ast: SearchNode, ctx?: SearchResolveContext): 
     }
     case 'folder':
       return `folder:"${(ast.pathPrefix ?? '').replace(/"/g, '\\"')}"`
-    case 'wiki':
-      return `wiki:"${ast.query.replace(/"/g, '\\"')}"`
-    case 'wikiEmpty':
-      return 'wiki:empty'
     case 'untagged':
       return 'untagged:'
     case 'path':

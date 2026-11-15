@@ -133,14 +133,6 @@ CREATE TABLE IF NOT EXISTS collection_external_links (
   url TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS wiki_pages (
-  entity_type TEXT NOT NULL CHECK(entity_type IN ('tag', 'media', 'collection')),
-  entity_id INTEGER NOT NULL,
-  body_md TEXT NOT NULL DEFAULT '',
-  updated_at TEXT NOT NULL,
-  PRIMARY KEY (entity_type, entity_id)
-);
-
 CREATE TABLE IF NOT EXISTS saved_searches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,

@@ -8,7 +8,6 @@ import type {
   Subject,
   Tag
 } from '../../shared/types'
-import { WikiEditor } from './WikiEditor'
 import { NewSubjectModal } from '../ui/NewSubjectModal'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { SubjectSection } from './SubjectSection'
@@ -536,8 +535,6 @@ export function MediaDetailsPanel() {
           }}
         />
       )}
-
-      <WikiEditor entityType="media" entityId={selectedMediaId} />
 
       <MediaDetailsVariantsSection
         mediaId={selectedMediaId}

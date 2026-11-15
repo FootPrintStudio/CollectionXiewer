@@ -165,13 +165,6 @@ export interface CollectionMember {
   sort_key: string
 }
 
-export interface WikiPage {
-  entity_type: 'tag' | 'media' | 'collection'
-  entity_id: number
-  body_md: string
-  updated_at: string
-}
-
 export interface SavedSearch {
   id: number
   name: string

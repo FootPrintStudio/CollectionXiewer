@@ -7,7 +7,6 @@ import * as mediaQuery from '../services/mediaQuery'
 import * as tags from '../services/tags'
 import * as tagGroups from '../services/tagGroups'
 import * as collections from '../services/collections'
-import * as wiki from '../services/wiki'
 import * as crop from '../services/crop'
 import * as thumbs from '../services/thumbs'
 import * as videoPoster from '../services/videoPoster'
@@ -34,6 +33,7 @@ import {
 import { readDesktopTheme, setDesktopThemeMainWindow } from '../services/desktopTheme'
 import type { ThemePreference } from '../../shared/desktopTheme'
 import * as mediaVariants from '../services/mediaVariants'
+import { getLocalApiStatus } from '../services/localApi'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -347,13 +347,6 @@ export function registerIpcHandlers(): void {
     return item
   })
 
-  ipcMain.handle('wiki:get', (_e, entityType: 'tag' | 'media' | 'collection', entityId: number) =>
-    wiki.getWiki(entityType, entityId)
-  )
-  ipcMain.handle('wiki:save', (_e, entityType: 'tag' | 'media' | 'collection', entityId: number, body: string) =>
-    wiki.saveWiki(entityType, entityId, body)
-  )
-
   ipcMain.handle('search:saved-list', () =>
     getDb().prepare(`SELECT * FROM saved_searches ORDER BY name`).all()
   )
@@ -394,8 +387,12 @@ export function registerIpcHandlers(): void {
     } catch {
       throw new Error('Invalid URL')
     }
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('Only http(s) URLs can be opened')
+    if (
+      parsed.protocol !== 'http:' &&
+      parsed.protocol !== 'https:' &&
+      parsed.protocol !== 'obsidian:'
+    ) {
+      throw new Error('Only http(s) and obsidian:// URLs can be opened')
     }
     return shell.openExternal(parsed.toString())
   })
@@ -428,6 +425,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('desktop-theme:get', (_e, preference: ThemePreference) =>
     readDesktopTheme(preference ?? 'desktop')
   )
+
+  ipcMain.handle('local-api:status', () => getLocalApiStatus())
 
   ipcMain.handle('updater:get-state', () => getUpdaterStatus())
   ipcMain.handle('updater:check', () => checkForUpdates())

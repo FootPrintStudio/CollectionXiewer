@@ -4,7 +4,6 @@ export type SearchClauseKind =
   | 'collection'
   | 'principal'
   | 'folder'
-  | 'wiki'
 
 export interface ActiveCompletion {
   clause: SearchClauseKind
@@ -16,7 +15,7 @@ export interface ActiveCompletion {
 }
 
 const CLAUSE_RE =
-  /(?:^|[\s(])(-)?(tag|suggested|collection|principal|folder|wiki):(?:"([^"]*)?|([^\s@()]*)?)$/i
+  /(?:^|[\s(])(-)?(tag|suggested|collection|principal|folder):(?:"([^"]*)?|([^\s@()]*)?)$/i
 
 export function detectActiveCompletion(text: string, cursor: number): ActiveCompletion | null {
   const head = text.slice(0, cursor)

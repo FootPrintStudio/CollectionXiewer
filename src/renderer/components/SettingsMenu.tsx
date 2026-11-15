@@ -25,6 +25,12 @@ export function SettingsMenu() {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(() =>
     getThemePreference()
   )
+  const [localApiStatus, setLocalApiStatus] = useState<{
+    listening: boolean
+    host: string
+    port: number
+    tokenFile: string
+  } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,6 +45,7 @@ export function SettingsMenu() {
   useEffect(() => {
     if (!open) return
     void window.collectionXiewer.video.toolsAvailable().then(setVideoToolsOk)
+    void window.collectionXiewer.localApi.status().then(setLocalApiStatus)
   }, [open])
 
   useEffect(() => {
@@ -172,6 +179,23 @@ export function SettingsMenu() {
               </p>
             ) : null}
             <SettingsIdentifiersPanel onOpenEditor={openIdentifierEditor} />
+            <h2 className="settings-menu__panel-title">Local API</h2>
+            {localApiStatus ? (
+              <>
+                <p className="settings-menu__toggle-hint">
+                  {localApiStatus.listening ? 'Listening' : 'Not listening'} on{' '}
+                  <code>
+                    http://{localApiStatus.host}:{localApiStatus.port}
+                  </code>
+                </p>
+                <p className="settings-menu__toggle-hint">
+                  Session token file: <code>{localApiStatus.tokenFile}</code> (rewritten each app
+                  start — Oculus must re-read after restart).
+                </p>
+              </>
+            ) : (
+              <p className="settings-menu__toggle-hint">Loading API status…</p>
+            )}
             <h2 className="settings-menu__panel-title">Data</h2>
             <button
               type="button"

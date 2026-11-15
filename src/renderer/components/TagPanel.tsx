@@ -4,7 +4,6 @@ import { formatTagLabel } from '../../shared/tagDisplay'
 import { describeColorInheritance, DEFAULT_TAG_COLOR } from '../../shared/tagColor'
 import { describeIconInheritance, normalizeTagIcon } from '../../shared/tagIcon'
 import type { Tag, TagConnection, TagExternalLink } from '../../shared/types'
-import { WikiEditor } from './WikiEditor'
 import { tagChipStyle } from '../lib/tagChipStyle'
 import { useResolvedTagColor } from '../hooks/useResolvedTagColor'
 import { useResolvedTagIcon } from '../hooks/useResolvedTagIcon'
@@ -224,8 +223,6 @@ export function TagPanel() {
       />
 
       <TagExternalLinksSection tag={tag} links={links} onLinksChange={setLinks} />
-
-      <WikiEditor entityType="tag" entityId={tag.id} />
     </div>
   )
 }

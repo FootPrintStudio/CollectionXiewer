@@ -27,8 +27,6 @@ collection:"Name" — collection membership
 principal:slug — principal tag on any collection
 folder:"/path/to/root" — under watch folder
 name:pattern — path/filename (use * ? globs)
-wiki:"phrase" — media wiki body (full-text)
-wiki:empty — empty or missing media wiki
 untagged: — no tags on media
 kind:image — media kind
 AND OR NOT ( ) — boolean logic`

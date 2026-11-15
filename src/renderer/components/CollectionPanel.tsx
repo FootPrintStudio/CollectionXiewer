@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Collection, CollectionExternalLink, Tag } from '../../shared/types'
 import { useAppStore } from '../store/appStore'
-import { WikiEditor } from './WikiEditor'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { CollectionPrincipalTagsSection } from './CollectionPrincipalTagsSection'
 import { CollectionExternalLinksSection } from './CollectionExternalLinksSection'
@@ -92,8 +91,6 @@ export function CollectionPanel({ collectionId }: Props) {
         links={links}
         onLinksChange={setLinks}
       />
-
-      <WikiEditor entityType="collection" entityId={collectionId} />
 
       <div className="collection-panel__actions">
         <button type="button" className="danger" onClick={() => setConfirmDelete(true)}>

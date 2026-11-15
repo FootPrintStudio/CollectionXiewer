@@ -19,6 +19,5 @@ assert.equal(isEmptySearchAst(single.ast), false)
 assert.equal(countSearchClauses(single.ast), 1)
 
 assert.equal(formatSearchQuery({ type: 'untagged' }), 'untagged:')
-assert.equal(formatSearchQuery({ type: 'wikiEmpty' }), 'wiki:empty')
 
 console.log('searchAst.test.ts: all passed')
