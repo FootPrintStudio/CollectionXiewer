@@ -6,16 +6,18 @@ export const TAG_CONNECTION_KINDS: TagConnectionKind[] = ['hard', 'soft']
 
 export const TAG_CONNECTION_KIND_META: Record<
   TagConnectionKind,
-  { label: string; badge: string; description: string }
+  { label: string; sectionLabel: string; badge: string; description: string }
 > = {
   hard: {
-    label: 'Hard connection',
+    label: 'Hard',
+    sectionLabel: 'Hard Connections',
     badge: 'Auto-apply',
     description:
       'When this tag is applied to media, connected tags are added automatically in the same subject.'
   },
   soft: {
-    label: 'Soft connection',
+    label: 'Soft',
+    sectionLabel: 'Soft Connections',
     badge: 'Suggest',
     description:
       'Related tags shown as suggestions when this tag is applied—they are never added automatically.'

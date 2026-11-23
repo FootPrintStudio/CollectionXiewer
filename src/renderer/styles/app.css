@@ -469,6 +469,7 @@ body.panel-resize-active * {
 .tag-tree-chip {
   display: inline-flex;
   align-items: center;
+  gap: 0.15rem;
   margin: 0;
   max-width: calc(100% - 28px);
   overflow: hidden;
@@ -477,6 +478,26 @@ body.panel-resize-active * {
 .tag-tree-chip--selected {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+.tag-tree-chip--associated {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.tag-tree-chip--associated.tag-tree-chip--selected {
+  outline-width: 3px;
+}
+
+.tag-tree-row--associated {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.tag-tree-chip__remove {
+  flex-shrink: 0;
+  margin-left: 0.1rem;
 }
 
 .tag-tree-toggle {
@@ -2442,6 +2463,96 @@ body.panel-resize-active * {
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
   border: 1px solid var(--border);
+}
+
+/* Tag connections (details panel) */
+.tag-connections-section {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.tag-connections-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.tag-connections-section__header .panel-title {
+  margin: 0;
+}
+
+.tag-connections-section__empty {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tag-connections-section__group {
+  margin-top: 0.45rem;
+}
+
+.tag-connections-section__group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+.tag-connections-section__count {
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+
+.tag-connections-section__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tag-connection-chip {
+  gap: 0.15rem;
+  padding-right: 0.25rem;
+  max-width: 100%;
+}
+
+.tag-connection-chip__target {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tag-connection-chip--missing {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.tag-connection-chip--hard {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tag-connection-chip--soft {
+  border-style: dashed;
 }
 
 .tag-connection-kind-toggle {

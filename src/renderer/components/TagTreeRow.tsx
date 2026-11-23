@@ -1,6 +1,7 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { Tag } from '../../shared/types'
+import { formatTagLabel } from '../../shared/tagDisplay'
 import { tagChipStyle } from '../lib/tagChipStyle'
 import { useResolvedTagColor } from '../hooks/useResolvedTagColor'
 import { TagChipContent } from './TagChipContent'
@@ -12,11 +13,13 @@ interface Props {
   isCollapsed: boolean
   hasChildren: boolean
   isSelected: boolean
+  isAssociated: boolean
   dropPending: boolean
   dropReady: boolean
   onSelect: () => void
   onToggleCollapse: (e: React.MouseEvent) => void
   onContextMenu: (e: React.MouseEvent) => void
+  onRemoveAssociation?: () => void
 }
 
 export function TagTreeRow({
@@ -25,11 +28,13 @@ export function TagTreeRow({
   isCollapsed,
   hasChildren,
   isSelected,
+  isAssociated,
   dropPending,
   dropReady,
   onSelect,
   onToggleCollapse,
-  onContextMenu
+  onContextMenu,
+  onRemoveAssociation
 }: Props) {
   const resolvedColor = useResolvedTagColor(tag)
   const dragData: TagDragData = { type: 'tag', tagId: tag.id }
@@ -65,7 +70,7 @@ export function TagTreeRow({
   return (
     <div
       ref={setRefs}
-      className={`tag-tree-row${isSelected ? ' active' : ''}${isDragging ? ' tag-dragging' : ''}${dropClass}`}
+      className={`tag-tree-row${isSelected ? ' active' : ''}${isAssociated ? ' tag-tree-row--associated' : ''}${isDragging ? ' tag-dragging' : ''}${dropClass}`}
       style={{ paddingLeft: `${depth * 14 + 4}px` }}
       onClick={onSelect}
       onContextMenu={onContextMenu}
@@ -83,10 +88,24 @@ export function TagTreeRow({
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
       </button>
       <span
-        className={`chip tag-tree-chip${isSelected ? ' tag-tree-chip--selected' : ''}`}
+        className={`chip tag-tree-chip${isSelected ? ' tag-tree-chip--selected' : ''}${isAssociated ? ' tag-tree-chip--associated' : ''}${isAssociated ? ' chip--removable' : ''}`}
         style={tagChipStyle(resolvedColor)}
       >
         <TagChipContent tag={tag} />
+        {isAssociated && onRemoveAssociation ? (
+          <button
+            type="button"
+            className="chip__remove tag-tree-chip__remove"
+            aria-label={`Remove association with ${formatTagLabel(tag)}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemoveAssociation()
+            }}
+          >
+            ×
+          </button>
+        ) : null}
       </span>
     </div>
   )

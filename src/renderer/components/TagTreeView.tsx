@@ -38,15 +38,25 @@ interface DeleteTagRequest {
   childCount: number
 }
 
+/** Association shown in the tag tree for the active details panel selection. */
+type TreeAssociation =
+  | { mode: 'media'; mediaId: number; tagIds: Set<number> }
+  | { mode: 'tag'; sourceTagId: number; byTarget: Map<number, number[]> }
+
 export function TagTreeView() {
   const tags = useAppStore((s) => s.tags)
   const tagGroups = useAppStore((s) => s.tagGroups)
   const selectedTagId = useAppStore((s) => s.selectedTagId)
+  const selectedMediaId = useAppStore((s) => s.selectedMediaId)
+  const detailsFocus = useAppStore((s) => s.detailsFocus)
+  const mediaTagsRevision = useAppStore((s) => s.mediaTagsRevision)
+  const tagConnectionsRevision = useAppStore((s) => s.tagConnectionsRevision)
   const selectTag = useAppStore((s) => s.selectTag)
   const refreshTags = useAppStore((s) => s.refreshTags)
   const refreshTagGroups = useAppStore((s) => s.refreshTagGroups)
   const refreshMedia = useAppStore((s) => s.refreshMedia)
   const bumpMediaTagsRevision = useAppStore((s) => s.bumpMediaTagsRevision)
+  const bumpTagConnectionsRevision = useAppStore((s) => s.bumpTagConnectionsRevision)
   const bumpCollectionDetailsRevision = useAppStore((s) => s.bumpCollectionDetailsRevision)
 
   const { draggingTag, isPending, isReady, setReparentSideEffects } = useTagDnd()
@@ -58,11 +68,77 @@ export function TagTreeView() {
   const [showNewTagGroup, setShowNewTagGroup] = useState(false)
   const [deleteTagGroup, setDeleteTagGroup] = useState<TagGroup | null>(null)
   const [deleteTagRequest, setDeleteTagRequest] = useState<DeleteTagRequest | null>(null)
+  const [association, setAssociation] = useState<TreeAssociation | null>(null)
 
   const sections = useMemo(
     () => buildTagLibrarySections(tagGroups, tags),
     [tagGroups, tags]
   )
+
+  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags])
+
+  const associatedTagIds = useMemo(() => {
+    if (!association) return new Set<number>()
+    if (association.mode === 'media') return association.tagIds
+    return new Set(association.byTarget.keys())
+  }, [association])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (detailsFocus === 'media' && selectedMediaId != null) {
+        const rows = await window.collectionXiewer.mediaTags.list(selectedMediaId)
+        if (cancelled) return
+        const tagIds = new Set<number>()
+        for (const row of rows) {
+          tagIds.add(row.tag?.id ?? row.tag_id)
+        }
+        setAssociation({ mode: 'media', mediaId: selectedMediaId, tagIds })
+        return
+      }
+      if (detailsFocus === 'tag' && selectedTagId != null) {
+        const connections = await window.collectionXiewer.tags.connections(selectedTagId)
+        if (cancelled) return
+        const byTarget = new Map<number, number[]>()
+        for (const c of connections) {
+          const list = byTarget.get(c.target_tag_id) ?? []
+          list.push(c.id)
+          byTarget.set(c.target_tag_id, list)
+        }
+        setAssociation({ mode: 'tag', sourceTagId: selectedTagId, byTarget })
+        return
+      }
+      setAssociation(null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    detailsFocus,
+    selectedMediaId,
+    selectedTagId,
+    mediaTagsRevision,
+    tagConnectionsRevision
+  ])
+
+  useEffect(() => {
+    if (associatedTagIds.size === 0) return
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      for (const tagId of associatedTagIds) {
+        let parentId = tagsById.get(tagId)?.parent_id ?? null
+        while (parentId != null) {
+          if (next.has(parentId)) {
+            next.delete(parentId)
+            changed = true
+          }
+          parentId = tagsById.get(parentId)?.parent_id ?? null
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [associatedTagIds, tagsById])
 
   useEffect(() => {
     setReparentSideEffects((newParent) => {
@@ -76,6 +152,23 @@ export function TagTreeView() {
     })
     return () => setReparentSideEffects(null)
   }, [setReparentSideEffects])
+
+  const removeAssociation = useCallback(
+    async (tagId: number) => {
+      if (!association) return
+      if (association.mode === 'media') {
+        await window.collectionXiewer.mediaTags.remove(association.mediaId, tagId, null)
+        bumpMediaTagsRevision()
+        return
+      }
+      const connectionIds = association.byTarget.get(tagId) ?? []
+      for (const id of connectionIds) {
+        await window.collectionXiewer.tags.removeConnection(id)
+      }
+      bumpTagConnectionsRevision()
+    },
+    [association, bumpMediaTagsRevision, bumpTagConnectionsRevision]
+  )
 
   const toggleCollapsed = (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -329,6 +422,7 @@ export function TagTreeView() {
             key={section.tagGroup?.id ?? 'uncategorized'}
             section={section}
             selectedTagId={selectedTagId}
+            associatedTagIds={associatedTagIds}
             collapsed={collapsed}
             dropPending={isPending}
             dropReady={isReady}
@@ -338,6 +432,7 @@ export function TagTreeView() {
             onTagGroupContextMenu={openTagGroupMenu}
             onRenameTagGroup={(id, label) => void handleRenameTagGroup(id, label)}
             onTagGroupAppearanceChange={(id, patch) => void handleTagGroupAppearanceChange(id, patch)}
+            onRemoveAssociation={(id) => void removeAssociation(id)}
           />
         ))}
       </div>

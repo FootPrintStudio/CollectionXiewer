@@ -7,25 +7,9 @@ import { useResolvedTagColor } from '../hooks/useResolvedTagColor'
 import { TagChipContent } from './TagChipContent'
 import { AddTagConnectionModal } from '../ui/AddTagConnectionModal'
 import { SectionHelp } from '../ui/SectionHelp'
+import { useAppStore } from '../store/appStore'
 
-function ConnectionTargetChip({
-  tag,
-  onSelect
-}: {
-  tag: Tag
-  onSelect: () => void
-}) {
-  const color = useResolvedTagColor(tag)
-  return (
-    <button type="button" className="tag-connection-row__target" onClick={onSelect}>
-      <span className="chip tag-connection-row__chip" style={tagChipStyle(color)}>
-        <TagChipContent tag={tag} />
-      </span>
-    </button>
-  )
-}
-
-function ConnectionRow({
+function ConnectionChip({
   connection,
   target,
   onSelectTarget,
@@ -37,27 +21,43 @@ function ConnectionRow({
   onRemove: () => void
 }) {
   const meta = TAG_CONNECTION_KIND_META[connection.kind]
-  return (
-    <li className={`tag-connection-row tag-connection-row--${connection.kind}`}>
-      <span className={`tag-connection-row__badge tag-connection-row__badge--${connection.kind}`}>
-        {meta.badge}
-      </span>
-      {target ? (
-        <ConnectionTargetChip tag={target} onSelect={onSelectTarget} />
-      ) : (
-        <button type="button" className="tag-connection-row__missing" onClick={onSelectTarget}>
+  const color = useResolvedTagColor(target ?? null)
+
+  if (!target) {
+    return (
+      <span className={`chip chip--removable tag-connection-chip tag-connection-chip--missing tag-connection-chip--${connection.kind}`}>
+        <button type="button" className="tag-connection-chip__target" onClick={onSelectTarget}>
           Tag #{connection.target_tag_id} (missing)
         </button>
-      )}
+        <button
+          type="button"
+          className="chip__remove"
+          aria-label={`Remove ${meta.label} connection`}
+          onClick={onRemove}
+        >
+          ×
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className={`chip chip--removable tag-connection-chip tag-connection-chip--${connection.kind}`}
+      style={tagChipStyle(color)}
+    >
+      <button type="button" className="tag-connection-chip__target" onClick={onSelectTarget}>
+        <TagChipContent tag={target} />
+      </button>
       <button
         type="button"
-        className="tag-connection-row__remove"
-        aria-label={`Remove ${meta.label}`}
+        className="chip__remove"
+        aria-label={`Remove ${meta.label} connection to ${formatTagLabel(target)}`}
         onClick={onRemove}
       >
         ×
       </button>
-    </li>
+    </span>
   )
 }
 
@@ -77,6 +77,7 @@ export function TagConnectionsSection({
   onConnectionsChange
 }: Props) {
   const [showAddModal, setShowAddModal] = useState(false)
+  const bumpTagConnectionsRevision = useAppStore((s) => s.bumpTagConnectionsRevision)
 
   const byKind = useMemo(() => {
     const groups: Record<TagConnectionKind, TagConnection[]> = { hard: [], soft: [] }
@@ -98,6 +99,7 @@ export function TagConnectionsSection({
   const remove = async (id: number) => {
     await window.collectionXiewer.tags.removeConnection(id)
     onConnectionsChange(connections.filter((c) => c.id !== id))
+    bumpTagConnectionsRevision()
   }
 
   return (
@@ -122,20 +124,23 @@ export function TagConnectionsSection({
           byKind[kind].length === 0 ? null : (
             <div key={kind} className="tag-connections-section__group">
               <h3 className="tag-connections-section__group-title">
-                {TAG_CONNECTION_KIND_META[kind].label}
-                <span className="tag-connections-section__count">{byKind[kind].length}</span>
+                {TAG_CONNECTION_KIND_META[kind].sectionLabel}
+                <sup className="tag-connections-section__count" aria-label={`${byKind[kind].length}`}>
+                  {byKind[kind].length}
+                </sup>
               </h3>
-              <ul className="tag-connections-section__list">
+              <div className="tag-connections-section__chips" role="list">
                 {byKind[kind].map((c) => (
-                  <ConnectionRow
-                    key={c.id}
-                    connection={c}
-                    target={tagsById.get(c.target_tag_id)}
-                    onSelectTarget={() => onSelectTag(c.target_tag_id)}
-                    onRemove={() => void remove(c.id)}
-                  />
+                  <div key={c.id} role="listitem">
+                    <ConnectionChip
+                      connection={c}
+                      target={tagsById.get(c.target_tag_id)}
+                      onSelectTarget={() => onSelectTag(c.target_tag_id)}
+                      onRemove={() => void remove(c.id)}
+                    />
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )
         )
@@ -146,7 +151,10 @@ export function TagConnectionsSection({
           sourceTag={sourceTag}
           existing={connections}
           onClose={() => setShowAddModal(false)}
-          onAdded={(connection) => onConnectionsChange([...connections, connection])}
+          onAdded={(connection) => {
+            onConnectionsChange([...connections, connection])
+            bumpTagConnectionsRevision()
+          }}
         />
       ) : null}
     </section>
