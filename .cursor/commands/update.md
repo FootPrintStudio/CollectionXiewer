@@ -1,1 +1,0 @@
-Bump version, build a new AppImage, push to GitHub, and create a new release.
