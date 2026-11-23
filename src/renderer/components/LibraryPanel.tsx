@@ -10,7 +10,7 @@ import { BoardsLibraryView } from './BoardsLibraryView'
 type LibraryTab = 'folders' | 'collections' | 'boards' | 'tags'
 
 export function LibraryPanel() {
-  const [tab, setTab] = useState<LibraryTab>('folders')
+  const [tab, setTab] = useState<LibraryTab>('tags')
   const { draggingMediaIds } = useTagDnd()
   const wasDraggingMediaRef = useRef(false)
   const roots = useAppStore((s) => s.roots)

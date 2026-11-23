@@ -2,6 +2,15 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.5.2 — 2026-11-23
+
+### Changed
+- Stronger tag-tree association highlight so linked tags stand out in large libraries
+- Tags Library is the default Library panel tab on launch
+
+### Added
+- Media Variants gallery: View in gallery opens the full variant group in the center gallery with a Back to library banner
+
 ## 1.5.1 — 2026-11-23
 
 ### Changed

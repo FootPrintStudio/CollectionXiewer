@@ -16,7 +16,10 @@ export function GalleryToolbarControls() {
   const setGridSize = useAppStore((s) => s.setGridSize)
   const mediaSortOrder = useAppStore((s) => s.mediaSortOrder)
   const setMediaSortOrder = useAppStore((s) => s.setMediaSortOrder)
-  const media = useAppStore((s) => s.media)
+  const libraryMedia = useAppStore((s) => s.media)
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
+  const variantsMedia = useAppStore((s) => s.variantsMedia)
+  const media = variantsGalleryAnchorId != null ? variantsMedia : libraryMedia
   const openSlideshow = useAppStore((s) => s.openSlideshow)
 
   if (mainView !== 'gallery') return null

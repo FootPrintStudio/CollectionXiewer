@@ -19,6 +19,7 @@ import {
 } from './lib/panelLayout'
 import { GalleryToolbarControls } from './components/GalleryToolbarControls'
 import { BulkTagBar } from './components/BulkTagBar'
+import { VariantsGalleryBanner } from './components/VariantsGalleryBanner'
 import { SlideshowOverlay } from './components/SlideshowOverlay'
 import { SettingsMenu } from './components/SettingsMenu'
 import { VideoToolsBanner } from './components/VideoToolsBanner'
@@ -110,6 +111,7 @@ export function App() {
         </div>
         <div className="content-area">
           <VideoToolsBanner />
+          <VariantsGalleryBanner />
           <BulkTagBar />
           {mainView === 'gallery' && <GalleryView />}
           {mainView === 'preview' && <MediaPreviewer />}

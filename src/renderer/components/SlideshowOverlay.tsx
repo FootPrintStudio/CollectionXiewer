@@ -34,7 +34,10 @@ function SlideshowSlide({ item }: { item: MediaItem }) {
 }
 
 export function SlideshowOverlay() {
-  const media = useAppStore((s) => s.media)
+  const libraryMedia = useAppStore((s) => s.media)
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
+  const variantsMedia = useAppStore((s) => s.variantsMedia)
+  const media = variantsGalleryAnchorId != null ? variantsMedia : libraryMedia
   const slideshowOpen = useAppStore((s) => s.slideshowOpen)
   const slideshowIndex = useAppStore((s) => s.slideshowIndex)
   const slideshowPlaying = useAppStore((s) => s.slideshowPlaying)
