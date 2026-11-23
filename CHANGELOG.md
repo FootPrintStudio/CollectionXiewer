@@ -2,6 +2,13 @@
 
 All notable changes to CollectionXiewer are documented here.
 
+## 1.5.1 — 2026-11-23
+
+### Changed
+- Tag tree highlights tags associated with the active details panel (media tags, or selected tag connections) with a quick × to remove the association
+- Tag connection list uses compact chip rows instead of a sparse bullet list
+- Connection group titles read “Hard Connections” / “Soft Connections” with the count as a superscript
+
 ## 1.5.0 — 2026-11-15
 
 ### Added

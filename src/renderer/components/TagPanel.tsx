@@ -15,6 +15,7 @@ import { TagExternalLinksSection } from './TagExternalLinksSection'
 
 export function TagPanel() {
   const selectedTagId = useAppStore((s) => s.selectedTagId)
+  const tagConnectionsRevision = useAppStore((s) => s.tagConnectionsRevision)
   const refreshTags = useAppStore((s) => s.refreshTags)
   const selectTag = useAppStore((s) => s.selectTag)
   const tagGroups = useAppStore((s) => s.tagGroups)
@@ -55,7 +56,7 @@ export function TagPanel() {
       setLinks(await window.collectionXiewer.tags.externalLinks(selectedTagId))
       setAllTags(await window.collectionXiewer.tags.list())
     })()
-  }, [selectedTagId])
+  }, [selectedTagId, tagConnectionsRevision])
 
   if (!selectedTagId || !tag) {
     return null

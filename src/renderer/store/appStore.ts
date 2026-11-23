@@ -99,6 +99,7 @@ interface AppState {
   mainView: 'gallery' | 'preview' | 'board'
   detailsFocus: DetailsFocus
   mediaTagsRevision: number
+  tagConnectionsRevision: number
   slideshowOpen: boolean
   slideshowIndex: number
   slideshowPlaying: boolean
@@ -144,6 +145,7 @@ interface AppState {
   refreshMedia: () => Promise<void>
   loadMoreMedia: () => Promise<void>
   bumpMediaTagsRevision: () => void
+  bumpTagConnectionsRevision: () => void
   bumpCollectionMembersRevision: () => void
   bumpCollectionDetailsRevision: () => void
   init: () => Promise<void>
@@ -178,6 +180,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   mainView: 'gallery',
   detailsFocus: 'media',
   mediaTagsRevision: 0,
+  tagConnectionsRevision: 0,
   slideshowOpen: false,
   slideshowIndex: 0,
   slideshowPlaying: true,
@@ -317,6 +320,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   bumpSubjectsRevision: () => set((s) => ({ subjectsRevision: s.subjectsRevision + 1 })),
   bumpMediaTagsRevision: () => set((s) => ({ mediaTagsRevision: s.mediaTagsRevision + 1 })),
+  bumpTagConnectionsRevision: () =>
+    set((s) => ({ tagConnectionsRevision: s.tagConnectionsRevision + 1 })),
   bumpCollectionMembersRevision: () =>
     set((s) => ({ collectionMembersRevision: s.collectionMembersRevision + 1 })),
   bumpCollectionDetailsRevision: () =>

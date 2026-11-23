@@ -11,6 +11,7 @@ import { TagGroupAppearanceModal } from '../ui/TagGroupAppearanceModal'
 interface TagGroupSectionProps {
   section: TagLibrarySection
   selectedTagId: number | null
+  associatedTagIds: Set<number>
   collapsed: Set<number>
   dropPending: (id: string) => boolean
   dropReady: (id: string) => boolean
@@ -28,11 +29,13 @@ interface TagGroupSectionProps {
     tagGroupId: number,
     patch: { color: string; icon: string | null }
   ) => void
+  onRemoveAssociation?: (tagId: number) => void
 }
 
 export function TagGroupSection({
   section,
   selectedTagId,
+  associatedTagIds,
   collapsed,
   dropPending,
   dropReady,
@@ -41,7 +44,8 @@ export function TagGroupSection({
   onContextMenu,
   onTagGroupContextMenu,
   onRenameTagGroup,
-  onTagGroupAppearanceChange
+  onTagGroupAppearanceChange,
+  onRemoveAssociation
 }: TagGroupSectionProps) {
   const tagGroup = section.tagGroup
   const dropId = tagGroup != null ? tagGroupDropId(tagGroup.id) : TAG_DROP_UNCATEGORIZED
@@ -84,6 +88,7 @@ export function TagGroupSection({
     const hasChildren = children.length > 0
     const isCollapsed = collapsed.has(tag.id)
     const isSelected = selectedTagId === tag.id
+    const isAssociated = associatedTagIds.has(tag.id)
     const dropTargetId = tagDropId(tag.id)
 
     return (
@@ -94,12 +99,16 @@ export function TagGroupSection({
           isCollapsed={isCollapsed}
           hasChildren={hasChildren}
           isSelected={isSelected}
+          isAssociated={isAssociated}
           dropPending={dropPending(dropTargetId)}
           dropReady={dropReady(dropTargetId)}
           onSelect={() => onSelect(tag.id)}
           onToggleCollapse={(e) => hasChildren && onToggleCollapse(tag.id, e)}
           onContextMenu={(e) =>
             onContextMenu(e, tag.id, formatTagLabel(tag), tagGroup?.id ?? null)
+          }
+          onRemoveAssociation={
+            isAssociated && onRemoveAssociation ? () => onRemoveAssociation(tag.id) : undefined
           }
         />
         {hasChildren && !isCollapsed && (
