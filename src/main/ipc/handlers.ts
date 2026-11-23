@@ -77,6 +77,9 @@ export function registerIpcHandlers(): void {
     return backfillExoticRasterDimension(found)
   })
   ipcMain.handle('mediaVariants:list', (_e, mediaId: number) => mediaVariants.listVariants(mediaId))
+  ipcMain.handle('mediaVariants:listGroup', (_e, mediaId: number) =>
+    mediaVariants.listVariantGroup(mediaId)
+  )
   ipcMain.handle('mediaVariants:link', (_e, mediaId: number, otherMediaId: number) => {
     mediaVariants.linkVariants(mediaId, otherMediaId)
   })

@@ -84,10 +84,12 @@ function GalleryArea({
 }
 
 function GalleryLoadMoreFooter() {
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
   const mediaHasMore = useAppStore((s) => s.mediaHasMore)
   const mediaLoadingMore = useAppStore((s) => s.mediaLoadingMore)
   const loadMoreMedia = useAppStore((s) => s.loadMoreMedia)
 
+  if (variantsGalleryAnchorId != null) return null
   if (!mediaHasMore && !mediaLoadingMore) return null
 
   return (
@@ -188,8 +190,12 @@ function chunkMediaRows(items: MediaItem[], columnCount: number): MediaItem[][] 
 }
 
 export function GalleryView() {
-  const media = useAppStore((s) => s.media)
-  const mediaHasMore = useAppStore((s) => s.mediaHasMore)
+  const libraryMedia = useAppStore((s) => s.media)
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
+  const variantsMedia = useAppStore((s) => s.variantsMedia)
+  const media = variantsGalleryAnchorId != null ? variantsMedia : libraryMedia
+  const libraryHasMore = useAppStore((s) => s.mediaHasMore)
+  const mediaHasMore = variantsGalleryAnchorId != null ? false : libraryHasMore
   const mediaLoadingMore = useAppStore((s) => s.mediaLoadingMore)
   const loadMoreMedia = useAppStore((s) => s.loadMoreMedia)
   const galleryMode = useAppStore((s) => s.galleryMode)

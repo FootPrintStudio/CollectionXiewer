@@ -79,6 +79,36 @@ export function listVariants(mediaId: number): MediaVariantRef[] {
     .all(gid, mediaId) as MediaVariantRef[]
 }
 
+/** All members of the variant group for `mediaId` (including itself) as full MediaItems. */
+export function listVariantGroup(mediaId: number): MediaItem[] {
+  const gid = groupIdForMedia(mediaId)
+  if (gid == null) {
+    const solo = getMedia(mediaId)
+    return solo ? [solo] : []
+  }
+  const rows = getDb()
+    .prepare(
+      `SELECT m.*, r.path AS root_path,
+              c.x AS crop_x, c.y AS crop_y, c.w AS crop_w, c.h AS crop_h
+       FROM media_variant_members v
+       JOIN media_items m ON m.id = v.media_id
+       JOIN watch_roots r ON r.id = m.root_id
+       LEFT JOIN media_crop c ON c.media_id = m.id
+       WHERE v.group_id = ?
+       ORDER BY m.relative_path COLLATE NOCASE`
+    )
+    .all(gid) as Array<
+    Omit<MediaItem, 'absolute_path'> & {
+      root_path: string
+      crop_x?: number | null
+      crop_y?: number | null
+      crop_w?: number | null
+      crop_h?: number | null
+    }
+  >
+  return rows.map((r) => enrichMediaWithCrop(r))
+}
+
 /** Link two media items as variants (merge groups as needed). */
 export function linkVariants(mediaId: number, otherMediaId: number): void {
   if (mediaId === otherMediaId) {

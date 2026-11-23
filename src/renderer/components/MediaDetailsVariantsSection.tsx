@@ -39,6 +39,9 @@ function VariantThumb({ mediaId }: { mediaId: number }) {
 export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Props) {
   const selectedMediaIds = useAppStore((s) => s.selectedMediaIds)
   const setSelectedMediaId = useAppStore((s) => s.setSelectedMediaId)
+  const openVariantsGallery = useAppStore((s) => s.openVariantsGallery)
+  const refreshVariantsMedia = useAppStore((s) => s.refreshVariantsMedia)
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
   const [variants, setVariants] = useState<MediaVariantRef[]>([])
   const [busy, setBusy] = useState(false)
   const [confirmUnlink, setConfirmUnlink] = useState<MediaVariantRef | null>(null)
@@ -73,6 +76,7 @@ export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Pr
       )
       onChanged()
       await load()
+      if (variantsGalleryAnchorId != null) await refreshVariantsMedia()
     } catch (e) {
       showError(e)
     } finally {
@@ -93,6 +97,7 @@ export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Pr
       showToast('Variant linked.', 'success')
       onChanged()
       await load()
+      if (variantsGalleryAnchorId != null) await refreshVariantsMedia()
     } catch (e) {
       showError(e)
     } finally {
@@ -108,6 +113,7 @@ export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Pr
       showToast('Variant removed.', 'success')
       onChanged()
       await load()
+      if (variantsGalleryAnchorId != null) await refreshVariantsMedia()
     } catch (e) {
       showError(e)
     } finally {
@@ -115,13 +121,17 @@ export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Pr
     }
   }
 
+  const showInGallery = () => {
+    void openVariantsGallery(mediaId).catch((e) => showError(e))
+  }
+
   return (
     <section className="media-details-section media-variants-section" aria-label="Media Variants">
       <p className="panel-title">
         Media Variants
         <SectionHelp label="Media Variants help">
-          Link alternate files of the same work (crops, formats, edits). Opening a variant selects
-          it in the library. Copy Tags and Subjects from a variant to speed tagging.
+          Link alternate files of the same work (crops, formats, edits). Use View in gallery to
+          browse the whole group in the center panel. Opening a variant selects it in the library.
         </SectionHelp>
       </p>
 
@@ -129,6 +139,18 @@ export function MediaDetailsVariantsSection({ mediaId, revision, onChanged }: Pr
         <button
           type="button"
           className="primary"
+          disabled={busy || variants.length === 0}
+          title={
+            variants.length === 0
+              ? 'Link at least one variant to open the variants gallery'
+              : 'Show this media and its variants in the center gallery'
+          }
+          onClick={showInGallery}
+        >
+          View in gallery
+        </button>
+        <button
+          type="button"
           disabled={busy || otherSelected.length === 0}
           title={
             otherSelected.length === 0

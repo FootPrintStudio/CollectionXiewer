@@ -18,7 +18,10 @@ import { isEditableTarget } from '../../lib/keyboardTargets'
 import { showError } from '../../store/toastStore'
 
 export function MediaPreviewer() {
-  const mediaList = useAppStore((s) => s.media)
+  const libraryMedia = useAppStore((s) => s.media)
+  const variantsGalleryAnchorId = useAppStore((s) => s.variantsGalleryAnchorId)
+  const variantsMedia = useAppStore((s) => s.variantsMedia)
+  const mediaList = variantsGalleryAnchorId != null ? variantsMedia : libraryMedia
   const {
     selectedMediaId,
     cropMode,

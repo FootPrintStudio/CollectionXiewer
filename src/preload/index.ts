@@ -42,6 +42,8 @@ const api = {
   mediaVariants: {
     list: (mediaId: number) =>
       ipcRenderer.invoke('mediaVariants:list', mediaId) as Promise<MediaVariantRef[]>,
+    listGroup: (mediaId: number) =>
+      ipcRenderer.invoke('mediaVariants:listGroup', mediaId) as Promise<MediaItem[]>,
     link: (mediaId: number, otherMediaId: number) =>
       ipcRenderer.invoke('mediaVariants:link', mediaId, otherMediaId) as Promise<void>,
     unlink: (mediaId: number, otherMediaId: number) =>

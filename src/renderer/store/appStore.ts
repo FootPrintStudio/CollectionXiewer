@@ -100,6 +100,9 @@ interface AppState {
   detailsFocus: DetailsFocus
   mediaTagsRevision: number
   tagConnectionsRevision: number
+  /** When set, center gallery shows this media’s variant group instead of library results. */
+  variantsGalleryAnchorId: number | null
+  variantsMedia: MediaItem[]
   slideshowOpen: boolean
   slideshowIndex: number
   slideshowPlaying: boolean
@@ -148,6 +151,9 @@ interface AppState {
   bumpTagConnectionsRevision: () => void
   bumpCollectionMembersRevision: () => void
   bumpCollectionDetailsRevision: () => void
+  openVariantsGallery: (mediaId: number) => Promise<void>
+  closeVariantsGallery: () => void
+  refreshVariantsMedia: () => Promise<void>
   init: () => Promise<void>
 }
 
@@ -181,6 +187,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   detailsFocus: 'media',
   mediaTagsRevision: 0,
   tagConnectionsRevision: 0,
+  variantsGalleryAnchorId: null,
+  variantsMedia: [],
   slideshowOpen: false,
   slideshowIndex: 0,
   slideshowPlaying: true,
@@ -216,8 +224,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectMediaItem: (id, opts = {}) => {
     const { shiftKey = false, ctrlKey = false, metaKey = false } = opts
     const additive = ctrlKey || metaKey
-    const { media, selectedMediaIds, selectionAnchorId, selectedMediaId } = get()
-    const orderedIds = media.map((m) => m.id)
+    const {
+      media,
+      variantsGalleryAnchorId,
+      variantsMedia,
+      selectedMediaIds,
+      selectionAnchorId,
+      selectedMediaId
+    } = get()
+    const orderedSource = variantsGalleryAnchorId != null ? variantsMedia : media
+    const orderedIds = orderedSource.map((m) => m.id)
     const anchor = selectionAnchorId ?? selectedMediaId
 
     let nextIds: number[]
@@ -273,8 +289,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   closePreview: () =>
     set({ mainView: 'gallery', cropMode: false, subjectRegionEdit: null }),
   openSlideshow: () => {
-    const { media, selectedMediaId } = get()
-    const slideshowItems = slideshowEligibleMedia(media)
+    const { media, variantsGalleryAnchorId, variantsMedia, selectedMediaId } = get()
+    const source = variantsGalleryAnchorId != null ? variantsMedia : media
+    const slideshowItems = slideshowEligibleMedia(source)
     if (slideshowItems.length === 0) return
     const idx =
       selectedMediaId != null
@@ -327,6 +344,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   bumpCollectionDetailsRevision: () =>
     set((s) => ({ collectionDetailsRevision: s.collectionDetailsRevision + 1 })),
 
+  openVariantsGallery: async (mediaId: number) => {
+    const variantsMedia = await api().mediaVariants.listGroup(mediaId)
+    set({
+      variantsGalleryAnchorId: mediaId,
+      variantsMedia,
+      mainView: 'gallery',
+      detailsFocus: 'media',
+      selectedMediaId: mediaId,
+      selectedMediaIds: [mediaId],
+      selectionAnchorId: mediaId
+    })
+  },
+
+  closeVariantsGallery: () => set({ variantsGalleryAnchorId: null, variantsMedia: [] }),
+
+  refreshVariantsMedia: async () => {
+    const anchor = get().variantsGalleryAnchorId
+    if (anchor == null) return
+    const variantsMedia = await api().mediaVariants.listGroup(anchor)
+    if (variantsMedia.length === 0) {
+      set({ variantsGalleryAnchorId: null, variantsMedia: [] })
+      return
+    }
+    // Keep anchor in the group; if it left, follow the current selection or first member.
+    const { selectedMediaId } = get()
+    const stillHasAnchor = variantsMedia.some((m) => m.id === anchor)
+    const nextAnchor = stillHasAnchor
+      ? anchor
+      : selectedMediaId != null && variantsMedia.some((m) => m.id === selectedMediaId)
+        ? selectedMediaId
+        : variantsMedia[0]!.id
+    set({ variantsGalleryAnchorId: nextAnchor, variantsMedia })
+  },
+
   refreshRoots: async () => {
     const roots = await api().roots.list()
     set({ roots })
@@ -358,6 +409,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     )
 
     if (requestId !== mediaRequestSeq) return
+
+    // Variants gallery selection is independent of library results.
+    if (get().variantsGalleryAnchorId != null) {
+      set({
+        media,
+        mediaHasMore: media.length >= MEDIA_PAGE_SIZE,
+        mediaLoadingMore: false
+      })
+      return
+    }
 
     const idSet = new Set(media.map((m) => m.id))
     const { selectedMediaIds, selectedMediaId, selectionAnchorId } = get()
